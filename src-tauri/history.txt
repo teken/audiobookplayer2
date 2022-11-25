@@ -1,0 +1,8 @@
+#V2
+list
+select * from works
+use ns abp db local
+select * from works
+use ns abp db local
+use ns abp db local;
+select * from works

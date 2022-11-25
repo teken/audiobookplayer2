@@ -12,7 +12,16 @@
   },
   "tauri": {
     "allowlist": {
-      "all": true
+      "all": true,
+      "fs": {
+        "all": true
+      },
+      "protocol": {
+        "asset": true,
+        "assetScope": [
+          "**"
+        ]
+      }
     },
     "bundle": {
       "active": true,

@@ -14,6 +14,9 @@
     <button on:click={() => invoke("scan").then(() => invoke("load"))}
       >Scan</button
     >
+    <button on:click={() => invoke("clear").then(() => invoke("load"))}
+      >Clear</button
+    >
   </span>
   <span>
     <button on:click={() => appWindow.minimize()}

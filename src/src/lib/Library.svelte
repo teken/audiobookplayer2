@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { invoke } from "@tauri-apps/api";
+    import { invoke, tauri } from "@tauri-apps/api";
     import * as store from "../store";
     import type { Book } from "../types";
 
@@ -94,10 +94,21 @@
                                         class="book-item"
                                         on:dblclick={() => startBook(book)}
                                     >
-                                        <img
-                                            src="https://via.placeholder.com/160"
-                                            alt="cover-placeholder"
-                                        />
+                                        {#if book.image_files.length > 0}
+                                            <img
+                                                class="item-image"
+                                                src={tauri.convertFileSrc(
+                                                    book.image_files[0]
+                                                )}
+                                                alt="cover"
+                                            />
+                                        {:else}
+                                            <img
+                                                class="item-image"
+                                                src="https://via.placeholder.com/160"
+                                                alt="cover-placeholder"
+                                            />
+                                        {/if}
                                         <span class="label">{book.name}</span>
                                     </div>
                                 {/each}
@@ -156,10 +167,18 @@
 
     .book-item {
         display: inline-grid;
+        justify-items: center;
         cursor: pointer;
     }
 
     .book-item > .label {
         text-align: center;
+        padding: 0.5rem 0.2rem;
+    }
+
+    .book-item > .item-image {
+        height: 160px;
+        max-width: 160px;
+        max-height: 160px;
     }
 </style>

@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 src-tauri/data/
+
+player/target/
+
+src-tauri/data.db/
