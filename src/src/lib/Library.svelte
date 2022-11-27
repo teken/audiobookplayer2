@@ -54,26 +54,46 @@
         console.log("start_book", { book });
         invoke("start_book", { book });
     };
+
+    let libraryTopRef;
 </script>
 
-<button on:click={() => (loadLibrary = invoke("load"))}>load</button>
+<div bind:this={libraryTopRef}>
+    <button on:click={() => (loadLibrary = invoke("load"))}>load</button>
 
-<form on:submit|preventDefault={submit}>
-    <input value={searchText} type="search" name="search" autocomplete="off" />
-</form>
+    <form on:submit|preventDefault={submit} class="search-form">
+        <input
+            value={searchText}
+            type="search"
+            name="search"
+            autocomplete="off"
+            placeholder="book name..."
+        />
+    </form>
+</div>
 
 {#await loadLibrary}
     Loading ...
 {:then data}
-    library
     <div class="library {displaySearchResults ? 'search-result' : ''}">
         {#if displaySearchResults}
             {#each data as book}
                 <div class="book-item" on:dblclick={() => startBook(book)}>
-                    <img
-                        src="https://via.placeholder.com/160"
-                        alt="cover-placeholder"
-                    />
+                    {#if book.image_files.length > 0}
+                        <img
+                            class="item-image"
+                            src={tauri.convertFileSrc(book.image_files[0])}
+                            alt="cover"
+                            loading="lazy"
+                        />
+                    {:else}
+                        <img
+                            class="item-image"
+                            src="https://via.placeholder.com/160"
+                            alt="cover-placeholder"
+                            loading="lazy"
+                        />
+                    {/if}
                     <span class="label">{book.name}</span>
                     <span class="label">{book.series ?? ""}</span>
                     <span class="label">{book.author}</span>
@@ -101,12 +121,14 @@
                                                     book.image_files[0]
                                                 )}
                                                 alt="cover"
+                                                loading="lazy"
                                             />
                                         {:else}
                                             <img
                                                 class="item-image"
                                                 src="https://via.placeholder.com/160"
                                                 alt="cover-placeholder"
+                                                loading="lazy"
                                             />
                                         {/if}
                                         <span class="label">{book.name}</span>
@@ -119,11 +141,25 @@
             {/each}
         {/if}
     </div>
+    <button
+        class="return-to-top"
+        on:click={() => libraryTopRef.scrollIntoView()}>Top</button
+    >
 {:catch error}
     Failed to load library: {error}
 {/await}
 
 <style>
+    .search-form {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .search-form > input {
+        width: 80%;
+    }
+
     .library {
         display: grid;
         gap: 1rem;
@@ -180,5 +216,11 @@
         height: 160px;
         max-width: 160px;
         max-height: 160px;
+    }
+
+    .return-to-top {
+        position: fixed;
+        right: 2rem;
+        bottom: 4rem;
     }
 </style>

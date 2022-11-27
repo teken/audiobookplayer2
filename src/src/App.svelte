@@ -3,6 +3,7 @@
   import { appWindow } from "@tauri-apps/api/window";
   import { invoke } from "@tauri-apps/api";
   import Router from "svelte-spa-router";
+  import SlimPlayer from "./lib/SlimPlayer.svelte";
 
   const routes = {
     "/": Library,
@@ -44,20 +45,9 @@
   <Router {routes} restoreScrollState={true} />
 </main>
 
-<footer>
-  <button on:click={() => invoke("play")}>Play</button>
-  <button on:click={() => invoke("pause")}>Pause</button>
-  <button on:click={() => invoke("stop")}>Stop</button>
-</footer>
+<SlimPlayer />
 
 <style>
-  /* header,
-  footer {
-    width: 100%;
-    position: fixed;
-    height: 1rem;
-  }*/
-
   header {
     display: flex;
     justify-content: space-between;
@@ -65,9 +55,6 @@
 
   main {
     overflow-y: auto;
+    position: relative;
   }
-
-  /*footer {
-    bottom: 0;
-  } */
 </style>

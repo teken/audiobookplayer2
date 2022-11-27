@@ -13,6 +13,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+  user-select: none;
 }
 
 a {
@@ -48,6 +49,7 @@ h1 {
   height: 100vh;
   display: grid;
   grid-template-rows: fit-content auto fit-content;
+  overflow-x: hidden;
 }
 
 button {
