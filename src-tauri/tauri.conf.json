@@ -7,8 +7,8 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "audiobookplayer2",
-    "version": "0.0.0"
+    "productName": "Audio Book Player",
+    "version": "2.0.0"
   },
   "tauri": {
     "allowlist": {

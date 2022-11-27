@@ -1,6 +1,9 @@
 <script lang="ts">
+    import type { Segment } from "../store";
+
     export let position: number = 0;
     export let positionUpdate: (value: number) => void = () => {};
+    export let segments: Segment[] = [];
 
     let barRef;
     let mouseX = 0;
@@ -24,6 +27,7 @@
         mouseX = event.clientX;
         positionUpdate(mouseX / barRef?.clientWidth ?? 0);
     };
+    const segmentBarGap = 0.5;
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -31,12 +35,38 @@
     width="100%"
     height="1rem"
     style="--color:rgb(26,137,255)"
-    class="bar"
     bind:this={barRef}
     on:click={setPosition}
     on:mousedown={pickUp}
 >
-    <rect y="5" width="100%" height=".3rem" style="fill:var(--color)" />
+    <g>
+        {#if segments.length == 0}
+            <rect y="5" width="100%" height=".3rem" style="fill:var(--color)" />
+        {:else}
+            {#each segments as segment, index}
+                {#if index === segments.length - 1}
+                    <rect
+                        y="5"
+                        x="{segment.startPosition}%"
+                        width="{segment.endPosition - segment.startPosition}%"
+                        height=".3rem"
+                        style="fill:var(--color)"
+                    />
+                {:else}
+                    <rect
+                        y="5"
+                        x="{segment.startPosition}%"
+                        width="{segment.endPosition -
+                            segment.startPosition -
+                            segmentBarGap / 2}%"
+                        height=".3rem"
+                        style="fill:var(--color)"
+                    />
+                {/if}
+            {/each}
+        {/if}
+    </g>
+
     <circle
         class="handle"
         cx={indicatorPickedUp
@@ -54,7 +84,15 @@
 </svg>
 
 <style>
-    .bar {
+    svg {
         cursor: pointer;
     }
+
+    svg g rect {
+        height: 0.3rem;
+    }
+
+    /* svg g rect:hover {
+        height: 0.5rem;
+    } */
 </style>

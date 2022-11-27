@@ -49,6 +49,13 @@
 
     let timeIndicator;
     let bar;
+
+    const toggleMute = () => {
+        playerStateStore.update((old) => {
+            old.muted = !old.muted;
+            return old;
+        });
+    };
 </script>
 
 <footer>
@@ -83,6 +90,7 @@
         <ProgressBar
             position={playerState.positionAsPercentage}
             positionUpdate={positionUpdater}
+            segments={playerState.chaptersAsSegments}
         />
     </div>
 
@@ -101,7 +109,7 @@
         </div>
     </span>
     <span class="right">
-        <button>
+        <button on:click={() => toggleMute()}>
             <Icon
                 icon={playerState.muted ? faVolumeXmark : volumnIcon()}
             /></button
@@ -135,8 +143,9 @@
     .left,
     .right {
         display: flex;
-        align-items: baseline;
-        gap: 1rem;
+        align-items: center;
+        /* gap: 1rem; */
+        padding: 0 0.3rem;
     }
 
     .left {
@@ -151,6 +160,7 @@
     button {
         border: 0;
         background-color: transparent;
+        padding: 0.6rem 0.7rem;
     }
 
     button:hover {

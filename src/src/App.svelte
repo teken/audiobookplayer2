@@ -2,16 +2,30 @@
   import Library from "./lib/Library.svelte";
   import { appWindow } from "@tauri-apps/api/window";
   import { invoke } from "@tauri-apps/api";
-  import Router from "svelte-spa-router";
+  import Router, { push } from "svelte-spa-router";
   import SlimPlayer from "./lib/SlimPlayer.svelte";
+  import { Icon } from "svelte-fontawesome";
+  import {
+    faBook,
+    faGear,
+    faQuestion,
+  } from "@fortawesome/free-solid-svg-icons";
+  import Settings from "./lib/Settings.svelte";
+  import About from "./lib/About.svelte";
 
   const routes = {
     "/": Library,
+    "/settings": Settings,
+    "/about": About,
   };
 </script>
 
 <header data-tauri-drag-region>
   <span>
+    <button on:click={() => push("/")}><Icon icon={faBook} /></button>
+    <button on:click={() => push("/settings")}><Icon icon={faGear} /></button>
+    <button on:click={() => push("/about")}><Icon icon={faQuestion} /></button>
+    |
     <button on:click={() => invoke("scan").then(() => invoke("load"))}
       >Scan</button
     >

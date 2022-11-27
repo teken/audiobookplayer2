@@ -326,3 +326,13 @@ async fn create_author(
         Err(err) => Err(anyhow!("failed to create work: {}", err)),
     }
 }
+
+#[tauri::command]
+async fn library_stats() {
+    let (ds, ses) = &get_db().await;
+
+    let ass = format!("SELECT * FROM works"); // string::lowercase(author->name) CONTAINS string::lowercase('{search}') \ COALESCE(string::lowercase(series),'') CONTAINS string::lowercase('{search}') \
+    let result = ds.execute(ass.as_str(), ses, None, false).await.unwrap();
+
+    let objects = into_iter_objects(result).unwrap();
+}

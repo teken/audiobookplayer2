@@ -48,7 +48,7 @@ h1 {
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-rows: fit-content auto fit-content;
+  grid-template-rows: auto 1fr auto;
   overflow-x: hidden;
 }
 

@@ -2,18 +2,19 @@
     import { invoke, tauri } from "@tauri-apps/api";
     import * as store from "../store";
     import type { Book } from "../types";
+    import { Icon } from "svelte-fontawesome";
+    import { faCaretUp } from "@fortawesome/free-solid-svg-icons";
 
     let searchText = "";
     store.search.subscribe((v) => (searchText = v));
 
     let displaySearchResults = false;
-    store.displaySearchResults.subscribe((x) => (displaySearchResults = x));
 
     let loadLibrary: Promise<Book[]> = invoke("load");
 
-    const sortLibrary = (data) => {
+    const sortLibrary = (data: Book[]) => {
         const library = data.sort(
-            (a, b) =>
+            (a: Book, b: Book) =>
                 a.author.localeCompare(b.author) ||
                 (a.series && b.series && a.series.localeCompare(b.series)) ||
                 a.name.localeCompare(b.name)
@@ -24,10 +25,10 @@
             .map((x) => [
                 x[0],
                 [...groupBy<string, Book>(x[1], (y) => y.series).entries()],
-            ]);
+            ]) as [string, [String, Book[]][]][];
     };
 
-    const groupBy = <K, T>(list: T[], selector: (x) => K) => {
+    const groupBy = <K, T>(list: T[], selector: (x: T) => K) => {
         return list.reduce((a, v) => {
             const sv = selector(v);
             if (!a.has(sv)) a.set(sv, [v]);
@@ -44,7 +45,7 @@
         const formData = new FormData(e.target);
 
         store.search.update(() => formData.get("search").toString());
-        store.displaySearchResults.update(() => searchText.length != 0);
+        displaySearchResults = searchText.length != 0;
 
         if (searchText) loadLibrary = invoke("search", { search: searchText });
         else loadLibrary = invoke("load");
@@ -143,7 +144,8 @@
     </div>
     <button
         class="return-to-top"
-        on:click={() => libraryTopRef.scrollIntoView()}>Top</button
+        on:click={() => libraryTopRef.scrollIntoView()}
+        ><Icon icon={faCaretUp} /><span>Return to Top</span></button
     >
 {:catch error}
     Failed to load library: {error}
@@ -201,10 +203,20 @@
         grid-row-end: -1;
     }
 
+    .book-item:hover {
+        /* color: #ffee10; */
+        box-shadow: 0 0 5px rgb(26, 137, 255);
+        text-shadow: 0 0 5px rgb(26, 137, 255);
+    }
+
     .book-item {
         display: inline-grid;
         justify-items: center;
         cursor: pointer;
+        border-radius: 0.3rem;
+        box-shadow: 0 0 5px rgba(26, 137, 255, 0);
+        text-shadow: 0 0 5px rgba(26, 137, 255, 0);
+        transition: box-shadow 0.2s ease-in-out, text-shadow 0.2s ease-in-out;
     }
 
     .book-item > .label {
@@ -216,11 +228,27 @@
         height: 160px;
         max-width: 160px;
         max-height: 160px;
+        mask-image: 0.3rem;
+        border-radius: 0.3rem;
+        transition: height 0.2s ease-in-out, padding 0.2s ease-in-out;
+    }
+
+    .book-item:hover > .item-image {
+        padding: 0.3rem;
+        height: 150px;
     }
 
     .return-to-top {
         position: fixed;
         right: 2rem;
         bottom: 4rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: rgba(26, 26, 26, 0.8);
+    }
+
+    .return-to-top span {
+        font-size: 0.8rem;
     }
 </style>
