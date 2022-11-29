@@ -47,8 +47,8 @@
         mouseX = event.clientX;
     };
 
-    let timeIndicator;
-    let bar;
+    let timeIndicator: HTMLDivElement;
+    let bar: HTMLDivElement;
 
     const toggleMute = () => {
         playerStateStore.update((old) => {

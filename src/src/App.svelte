@@ -12,12 +12,15 @@
   } from "@fortawesome/free-solid-svg-icons";
   import Settings from "./lib/Settings.svelte";
   import About from "./lib/About.svelte";
+  import { onMount } from "svelte";
 
   const routes = {
     "/": Library,
     "/settings": Settings,
     "/about": About,
   };
+
+  onMount(() => invoke("close_splashscreen"));
 </script>
 
 <header data-tauri-drag-region>
@@ -25,13 +28,6 @@
     <button on:click={() => push("/")}><Icon icon={faBook} /></button>
     <button on:click={() => push("/settings")}><Icon icon={faGear} /></button>
     <button on:click={() => push("/about")}><Icon icon={faQuestion} /></button>
-    |
-    <button on:click={() => invoke("scan").then(() => invoke("load"))}
-      >Scan</button
-    >
-    <button on:click={() => invoke("clear").then(() => invoke("load"))}
-      >Clear</button
-    >
   </span>
   <span>
     <button on:click={() => appWindow.minimize()}

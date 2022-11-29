@@ -4,13 +4,17 @@
     import type { Book } from "../types";
     import { Icon } from "svelte-fontawesome";
     import { faCaretUp } from "@fortawesome/free-solid-svg-icons";
+    import { onMount } from "svelte";
+    import { groupBy } from "../util";
 
     let searchText = "";
     store.search.subscribe((v) => (searchText = v));
 
     let displaySearchResults = false;
 
-    let loadLibrary: Promise<Book[]> = invoke("load");
+    let loadLibrary: Promise<Book[]> = Promise.resolve([]);
+
+    onMount(() => (loadLibrary = invoke("load")));
 
     const sortLibrary = (data: Book[]) => {
         const library = data.sort(
@@ -28,19 +32,6 @@
             ]) as [string, [String, Book[]][]][];
     };
 
-    const groupBy = <K, T>(list: T[], selector: (x: T) => K) => {
-        return list.reduce((a, v) => {
-            const sv = selector(v);
-            if (!a.has(sv)) a.set(sv, [v]);
-            else {
-                let nv = a.get(sv);
-                a.set(sv, [...nv, v]);
-            }
-
-            return a;
-        }, new Map<K, T[]>());
-    };
-
     const submit = (e) => {
         const formData = new FormData(e.target);
 
@@ -56,7 +47,7 @@
         invoke("start_book", { book });
     };
 
-    let libraryTopRef;
+    let libraryTopRef: HTMLDivElement;
 </script>
 
 <div bind:this={libraryTopRef}>
@@ -69,6 +60,7 @@
             name="search"
             autocomplete="off"
             placeholder="book name..."
+            style="padding: 1rem;font-size: larger;"
         />
     </form>
 </div>

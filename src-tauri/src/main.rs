@@ -5,35 +5,51 @@
 
 use anyhow::anyhow;
 use regex::Regex;
-use rodio::{Decoder, OutputStream, Sink};
-use std::{
-    collections::BTreeMap,
-    fs::{self, DirEntry, File, ReadDir},
-    io::BufReader,
-    path::PathBuf,
-};
+use rodio::{OutputStream, Sink};
+// use serde_derive::{Deserialize, Serialize};
+use std::{collections::BTreeMap, fs, path::PathBuf};
 use surrealdb::{
     sql::{Array, Object, Value},
-    Datastore, Response, Session, Val,
+    Datastore, Response, Session,
 };
+use tauri::Manager;
 
 const LIBRARY_LOCATION: &str = r"G:\Audio\Spooken Word";
 const AUDIO_FILE_EXTENSIONS: [&str; 4] = ["mp4", "mp3", "m4b", "wav"];
 const IMAGE_FILE_EXTENSIONS: [&str; 3] = ["jpg", "jpeg", "png"];
 
 struct AppState {
+    // settings: Settings,
     sink: Sink,
 }
 
+// #[derive(Default, Debug, Serialize, Deserialize, Clone)]
+// struct Settings {
+//     library_location: String,
+// }
+
 fn main() {
     env_logger::init();
+
+    // let settings: Settings = confy::load("audiobookplayer", "config").unwrap();
+
+    // confy::store("audiobookplayer", "config", settings.clone()).unwrap();
+
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = Sink::try_new(&stream_handle).unwrap();
 
     tauri::Builder::default()
         .manage(AppState { sink })
         .invoke_handler(tauri::generate_handler![
-            load, play, pause, scan, search, start_book, stop, clear
+            load,
+            play,
+            pause,
+            scan,
+            search,
+            start_book,
+            stop,
+            clear,
+            close_splashscreen
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -329,10 +345,25 @@ async fn create_author(
 
 #[tauri::command]
 async fn library_stats() {
-    let (ds, ses) = &get_db().await;
+    // let (ds, ses) = &get_db().await;
 
-    let ass = format!("SELECT * FROM works"); // string::lowercase(author->name) CONTAINS string::lowercase('{search}') \ COALESCE(string::lowercase(series),'') CONTAINS string::lowercase('{search}') \
-    let result = ds.execute(ass.as_str(), ses, None, false).await.unwrap();
+    // let ass = format!(
+    //     "SELECT \
+    //         (SELECT count(*) FROM works) as books, \
+    //         (SELECT count(string::length(series) == 0) FROM works) as booksNotInSeries, \
+    //     "
+    // ); // string::lowercase(author->name) CONTAINS string::lowercase('{search}') \ COALESCE(string::lowercase(series),'') CONTAINS string::lowercase('{search}') \
+    // let result = ds.execute(ass.as_str(), ses, None, false).await.unwrap();
 
-    let objects = into_iter_objects(result).unwrap();
+    // let objects = into_iter_objects(result).unwrap();
+}
+
+#[tauri::command]
+async fn close_splashscreen(window: tauri::Window) {
+    // Close splashscreen
+    if let Some(splashscreen) = window.get_window("splashscreen") {
+        splashscreen.close().unwrap();
+    }
+    // Show main window
+    window.get_window("main").unwrap().show().unwrap();
 }

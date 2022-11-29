@@ -23,6 +23,8 @@ tokio = { version = "1.22", features = ["macros", "rt-multi-thread"] }
 anyhow = "1"
 rodio = "0.16.0"
 regex = "1.7.0"
+confy = "0.5.1"
+serde_derive = "1.0.148"
 # audioplayer = { version = "0.0.0", path = "./player" }
 
 [features]

@@ -10,3 +10,16 @@ export function secondsToFormatted(value: number) {
         string = h + ":" + string;
     return string;
 }
+
+export const groupBy = <K, T>(list: T[], selector: (x: T) => K) => {
+    return list.reduce((a, v) => {
+        const sv = selector(v);
+        if (!a.has(sv)) a.set(sv, [v]);
+        else {
+            let nv = a.get(sv);
+            a.set(sv, [...nv, v]);
+        }
+
+        return a;
+    }, new Map<K, T[]>());
+}
