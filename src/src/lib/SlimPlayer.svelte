@@ -166,7 +166,8 @@
 
     button:hover {
         border: 0;
-        background-color: rgba(26, 26, 26, 0.5);
+        background-color: var(--color4);
+        /* background-color: rgba(26, 26, 26, 0.5); */
     }
 
     button:focus {

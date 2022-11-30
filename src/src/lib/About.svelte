@@ -23,16 +23,19 @@
         &copy; {dateRange()} Anna Haig All Rights Reserved<br />
     </div>
     <div class="links">
-        <span
+        <a
+            href="https://audiobookplayer.app"
             class="link"
-            on:click={() => shell.open("https://audiobookplayer.app")}
-            >AudioBookPlayer.app</span
+            on:click|preventDefault={() =>
+                shell.open("https://audiobookplayer.app")}
+            >AudioBookPlayer.app</a
         >
-        <span
+        <a
+            href="https://www.patreon.com/AudioBookPlayer"
             class="link"
-            on:click={() =>
+            on:click|preventDefault={() =>
                 shell.open("https://www.patreon.com/AudioBookPlayer")}
-            >Patreon</span
+            >Patreon</a
         >
     </div>
     {#await statsPromise}

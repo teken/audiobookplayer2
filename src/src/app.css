@@ -1,4 +1,10 @@
 :root {
+  --color5: #343b4f;
+  --color4: #464e61;
+  --color3: #6d7589;
+  --color2: #a0a7bb;
+  --color1: #b8bfd3;
+
   font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
   /* font-family: Inter, Avenir, Helvetica, Arial, sans-serif; */
   font-size: 16px;
@@ -6,8 +12,10 @@
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* color: rgba(255, 255, 255, 0.87); */
+  color: var(--color1);
+  background-color: var(--color5);
+  /*#242424; */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,16 +23,20 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
   user-select: none;
+  outline-color: var(--color1);
+}
+
+.sfa path {
+  fill: var(--color1);
 }
 
 a {
   font-weight: 500;
-  color: #646cff;
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #535bf2;
+  text-decoration: underline;
 }
 
 body {
@@ -60,13 +72,10 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--color4);
+  color: var(--color1);
   cursor: pointer;
   transition: border-color 0.25s;
-}
-
-button:hover {
-  border-color: #646cff;
 }
 
 button:focus,
@@ -74,17 +83,32 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
+input {
+  background-color: var(--color4);
+  border: solid var(--color3);
+  outline: 0;
+  color: var(--color1);
+}
 
-  a:hover {
-    color: #747bff;
-  }
+input::placeholder {
+  color: var(--color2);
+}
 
-  button {
-    background-color: #f9f9f9;
-  }
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color1) transparent;
+}
+
+/* Works on Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color1);
+  border-radius: .1rem;
 }

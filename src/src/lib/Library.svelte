@@ -67,7 +67,9 @@
 </div>
 
 {#await loadLibrary}
-    <Loading />
+    <div style="display: grid; place-items:center; height:80%;">
+        <Loading />
+    </div>
 {:then data}
     <div class="library {displaySearchResults ? 'search-result' : ''}">
         {#if displaySearchResults}
@@ -198,8 +200,8 @@
 
     .book-item:hover {
         /* color: #ffee10; */
-        box-shadow: 0 0 5px rgb(26, 137, 255);
-        text-shadow: 0 0 5px rgb(26, 137, 255);
+        box-shadow: 0 0 5px var(--color4); /* rgb(26, 137, 255);*/
+        text-shadow: 0 0 5px var(--color4); /* rgb(26, 137, 255);*/
     }
 
     .book-item {
@@ -238,7 +240,21 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        background-color: rgba(26, 26, 26, 0.8);
+        background-color: var(--color4);
+        color: var(--color1);
+        border-radius: 8px;
+        border: 1px solid transparent;
+        padding: 0.6em 1.2em;
+        font-size: 1em;
+        font-weight: 500;
+        font-family: inherit;
+        cursor: pointer;
+        transition: border-color 0.25s;
+    }
+
+    .return-to-top:focus,
+    .return-to-top:focus-visible {
+        outline: 0.1rem solid var(--color1);
     }
 
     .return-to-top span {

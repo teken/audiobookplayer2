@@ -34,7 +34,7 @@
 <svg
     width="100%"
     height="1rem"
-    style="--color:rgb(26,137,255)"
+    style="--color:var(--color1)"
     bind:this={barRef}
     on:click={setPosition}
     on:mousedown={pickUp}

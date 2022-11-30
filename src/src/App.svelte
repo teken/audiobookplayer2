@@ -9,6 +9,9 @@
     faBook,
     faGear,
     faQuestion,
+    faWindowMinimize,
+    faWindowMaximize,
+    faWindowClose,
   } from "@fortawesome/free-solid-svg-icons";
   import Settings from "./lib/Settings.svelte";
   import About from "./lib/About.svelte";
@@ -31,22 +34,13 @@
   </span>
   <span>
     <button on:click={() => appWindow.minimize()}
-      ><img
-        src="https://api.iconify.design/mdi:window-minimize.svg"
-        alt="minimize"
-      /></button
+      ><Icon icon={faWindowMinimize} /></button
     >
     <button on:click={() => appWindow.toggleMaximize()}
-      ><img
-        src="https://api.iconify.design/mdi:window-maximize.svg"
-        alt="maximize"
-      /></button
+      ><Icon icon={faWindowMaximize} /></button
     >
-    <button on:click={() => appWindow.close()}
-      ><img
-        src="https://api.iconify.design/mdi:close.svg"
-        alt="close"
-      /></button
+    <button class="close" on:click={() => appWindow.close()}
+      ><Icon icon={faWindowClose} /></button
     >
   </span>
 </header>
@@ -68,5 +62,24 @@
     overflow-y: auto;
     position: relative;
     padding-top: 1rem;
+  }
+
+  button {
+    border: 0;
+    background-color: transparent;
+    padding: 0.6rem 0.7rem;
+  }
+
+  button:hover {
+    border: 0;
+    background-color: var(--color4); /*rgba(26, 26, 26, 0.5);*/
+  }
+
+  button:focus {
+    outline: 0;
+  }
+
+  button.close:hover {
+    background-color: rgba(172, 6, 6, 0.582);
   }
 </style>
