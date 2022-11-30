@@ -51,7 +51,7 @@
 </script>
 
 <div bind:this={libraryTopRef}>
-    <button on:click={() => (loadLibrary = invoke("load"))}>load</button>
+    <!-- <button on:click={() => (loadLibrary = invoke("load"))}>load</button> -->
 
     <form on:submit|preventDefault={submit} class="search-form">
         <input

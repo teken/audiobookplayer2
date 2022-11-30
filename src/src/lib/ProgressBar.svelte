@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Segment } from "../store";
+    import type { Segment } from "../types";
 
     export let position: number = 0;
     export let positionUpdate: (value: number) => void = () => {};

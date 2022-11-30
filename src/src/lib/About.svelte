@@ -1,6 +1,6 @@
 <script lang="ts">
     import { app, shell, invoke } from "@tauri-apps/api";
-    import type { Stats } from "../store";
+    import type { Stats } from "../types";
 
     const dateRange = () => {
         const startDate = 2018;

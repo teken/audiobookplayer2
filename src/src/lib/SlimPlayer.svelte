@@ -1,6 +1,6 @@
 <script lang="ts">
     import { invoke } from "@tauri-apps/api";
-    import { playerState as playerStateStore, PlayerState } from "../store";
+    import { playerState as playerStateStore } from "../store";
 
     import { Icon } from "svelte-fontawesome";
     import {
@@ -17,6 +17,7 @@
     } from "@fortawesome/free-solid-svg-icons";
     import ProgressBar from "./ProgressBar.svelte";
     import { secondsToFormatted } from "../util";
+    import { PlayerState } from "../types";
 
     let playerState = new PlayerState();
     playerStateStore.subscribe((x) => (playerState = x));
