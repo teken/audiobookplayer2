@@ -61,10 +61,12 @@
   header {
     display: flex;
     justify-content: space-between;
+    box-shadow: 0 0 1rem 1rem #00000017;
   }
 
   main {
     overflow-y: auto;
     position: relative;
+    padding-top: 1rem;
   }
 </style>

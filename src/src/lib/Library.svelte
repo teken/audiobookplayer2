@@ -6,6 +6,7 @@
     import { faCaretUp } from "@fortawesome/free-solid-svg-icons";
     import { onMount } from "svelte";
     import { groupBy } from "../util";
+    import Loading from "./Loading.svelte";
 
     let searchText = "";
     store.search.subscribe((v) => (searchText = v));
@@ -66,7 +67,7 @@
 </div>
 
 {#await loadLibrary}
-    Loading ...
+    <Loading />
 {:then data}
     <div class="library {displaySearchResults ? 'search-result' : ''}">
         {#if displaySearchResults}

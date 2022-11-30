@@ -6,6 +6,7 @@
 use anyhow::anyhow;
 use regex::Regex;
 use rodio::{OutputStream, Sink};
+use serde::{Deserialize, Serialize};
 // use serde_derive::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::PathBuf};
 use surrealdb::{
@@ -39,6 +40,7 @@ fn main() {
     let sink = Sink::try_new(&stream_handle).unwrap();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(AppState { sink })
         .invoke_handler(tauri::generate_handler![
             load,
@@ -62,27 +64,39 @@ async fn get_db() -> (Datastore, Session) {
     )
 }
 
-#[tauri::command]
-async fn clear() {
-    let (ds, ses) = &get_db().await;
-    ds.execute("REMOVE TABLE works", ses, None, false).await;
-}
+#[derive(Debug, Serialize, Deserialize)]
+struct ClearDatabaseError;
 
 #[tauri::command]
-async fn load() -> Vec<Work> {
+async fn clear() -> Result<(), ClearDatabaseError> {
+    let (ds, ses) = &get_db().await;
+    match ds.execute("REMOVE TABLE works", ses, None, false).await {
+        Ok(_) => Ok(()),
+        Err(_) => Err(ClearDatabaseError),
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct LoadWorksError;
+
+#[tauri::command]
+async fn load() -> Result<Vec<Work>, LoadWorksError> {
     let (ds, ses) = &get_db().await;
 
     let result = ds
         .execute("SELECT * FROM works FETCH author", ses, None, false)
-        .await
-        .unwrap();
+        .await;
 
-    let objects = into_iter_objects(result).unwrap();
+    if let Err(_) = result {
+        return Err(LoadWorksError);
+    }
 
-    objects
+    let objects = into_iter_objects(result.unwrap()).unwrap();
+
+    Ok(objects
         .into_iter()
         .map(|object| object_into_work(object.unwrap()))
-        .collect()
+        .collect())
 }
 
 fn object_into_work(object: Object) -> Work {

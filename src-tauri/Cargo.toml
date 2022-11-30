@@ -25,6 +25,7 @@ rodio = "0.16.0"
 regex = "1.7.0"
 confy = "0.5.1"
 serde_derive = "1.0.148"
+tauri-plugin-window-state = "0.1.0"
 # audioplayer = { version = "0.0.0", path = "./player" }
 
 [features]
