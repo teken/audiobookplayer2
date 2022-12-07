@@ -6,6 +6,7 @@ export interface Book {
     author: string,
     series: string,
 
+    path: string,
     files: string[],
     audio_files: string[],
     image_files: string[],

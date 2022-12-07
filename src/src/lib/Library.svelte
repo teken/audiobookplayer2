@@ -1,12 +1,13 @@
 <script lang="ts">
-    import { invoke, tauri } from "@tauri-apps/api";
+    import { invoke, tauri, shell } from "@tauri-apps/api";
     import * as store from "../store";
     import type { Book } from "../types";
     import { Icon } from "svelte-fontawesome";
     import { faCaretUp } from "@fortawesome/free-solid-svg-icons";
     import { onMount } from "svelte";
-    import { groupBy } from "../util";
+    import { groupBy, secondsToFormatted } from "../util";
     import Loading from "./Loading.svelte";
+    import Portal from "svelte-portal";
 
     let searchText = "";
     store.search.subscribe((v) => (searchText = v));
@@ -14,6 +15,9 @@
     let displaySearchResults = false;
 
     let loadLibrary: Promise<Book[]> = Promise.resolve([]);
+    let displayRightClickMenu = false;
+    let rightClickedBook: Book;
+    let rightClickXY = { x: 0, y: 0 };
 
     onMount(() => (loadLibrary = invoke("load")));
 
@@ -44,16 +48,41 @@
     };
 
     const startBook = async (book: Book) => {
-        console.log("start_book", { book });
-        invoke("start_book", { book });
+        invoke("start_book", { work_id: book.id });
+    };
+
+    const rightClickBook = async (event: MouseEvent, book: Book) => {
+        rightClickedBook = book;
+        displayRightClickMenu = true;
+        rightClickXY = { x: event.clientX, y: event.y };
+
+        // let maxY = event.clientY + rightClickMenu.clientHeight;
+        //
+        // if (maxY > rightClickOverlay.clientHeight) {
+        //     rightClickXY = {
+        //         x: event.clientX,
+        //         y: rightClickOverlay.clientHeight - rightClickMenu.clientHeight,
+        //     };
+        //     console.log(
+        //         event.clientY,
+        //         rightClickMenu.clientHeight,
+        //         rightClickOverlay.clientHeight
+        //     );
+        // } else {
+        //     rightClickXY = { x: event.clientX, y: event.y };
+        // }
+    };
+
+    const dispelRightClick = async () => {
+        rightClickedBook = null;
+        displayRightClickMenu = false;
+        rightClickXY = { x: 0, y: 0 };
     };
 
     let libraryTopRef: HTMLDivElement;
 </script>
 
 <div bind:this={libraryTopRef}>
-    <!-- <button on:click={() => (loadLibrary = invoke("load"))}>load</button> -->
-
     <form on:submit|preventDefault={submit} class="search-form">
         <input
             value={searchText}
@@ -65,6 +94,23 @@
         />
     </form>
 </div>
+{#if displayRightClickMenu}
+    <Portal>
+        <div class="overlay" on:click={() => dispelRightClick()}>
+            <ul
+                class="right-click-menu"
+                style="left:{rightClickXY.x}px;top:{rightClickXY.y}px;"
+            >
+                <li>Play from Start</li>
+                <li>Play from {secondsToFormatted(23423)}</li>
+                <li>Clear Play time</li>
+                <li on:click={() => shell.open(rightClickedBook.path)}>
+                    Show in File Explorer
+                </li>
+            </ul>
+        </div>
+    </Portal>
+{/if}
 
 {#await loadLibrary}
     <div style="display: grid; place-items:center; height:80%;">
@@ -74,7 +120,12 @@
     <div class="library {displaySearchResults ? 'search-result' : ''}">
         {#if displaySearchResults}
             {#each data as book}
-                <div class="book-item" on:dblclick={() => startBook(book)}>
+                <div
+                    class="book-item"
+                    on:dblclick={() => startBook(book)}
+                    on:contextmenu|preventDefault={(e) =>
+                        rightClickBook(e, book)}
+                >
                     {#if book.image_files.length > 0}
                         <img
                             class="item-image"
@@ -109,6 +160,8 @@
                                     <div
                                         class="book-item"
                                         on:dblclick={() => startBook(book)}
+                                        on:contextmenu|preventDefault={(e) =>
+                                            rightClickBook(e, book)}
                                     >
                                         {#if book.image_files.length > 0}
                                             <img
@@ -220,17 +273,17 @@
     }
 
     .book-item > .item-image {
-        height: 160px;
-        max-width: 160px;
-        max-height: 160px;
+        height: 10rem;
+        max-width: 10rem;
+        max-height: 10rem;
         mask-image: 0.3rem;
         border-radius: 0.3rem;
-        transition: height 0.2s ease-in-out, padding 0.2s ease-in-out;
+        transition: height 0.2s ease-in-out, margin 0.2s ease-in-out;
     }
 
     .book-item:hover > .item-image {
-        padding: 0.3rem;
-        height: 150px;
+        margin: 0.5rem;
+        height: 9rem;
     }
 
     .return-to-top {
@@ -259,5 +312,41 @@
 
     .return-to-top span {
         font-size: 0.8rem;
+    }
+
+    .overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgb(0 0 0 / 46%);
+    }
+
+    .right-click-menu {
+        position: absolute;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        background-color: var(--color5);
+        z-index: 2;
+        border-radius: 0.3rem;
+    }
+
+    .right-click-menu li {
+        padding: 0.3rem 1rem;
+    }
+
+    .right-click-menu li:hover {
+        background-color: var(--color4);
+        cursor: pointer;
+    }
+
+    .right-click-menu li:first-of-type:hover {
+        border-radius: 0.3rem 0.3rem 0 0;
+    }
+
+    .right-click-menu li:last-of-type:hover {
+        border-radius: 0 0 0.3rem 0.3rem;
     }
 </style>

@@ -80,6 +80,6 @@
   }
 
   button.close:hover {
-    background-color: rgba(172, 6, 6, 0.582);
+    background-color: rgb(197 0 0 / 85%);
   }
 </style>

@@ -26,6 +26,10 @@
   outline-color: var(--color1);
 }
 
+body {
+  overflow: hidden;
+}
+
 .sfa path {
   fill: var(--color1);
 }
