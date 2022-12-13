@@ -28,3 +28,7 @@ src-tauri/data/
 player/target/
 
 src-tauri/data.db/
+
+data.db/
+
+date.db/

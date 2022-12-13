@@ -8,6 +8,7 @@
     import { groupBy, secondsToFormatted } from "../util";
     import Loading from "./Loading.svelte";
     import Portal from "svelte-portal";
+    import { push } from "svelte-spa-router";
 
     let searchText = "";
     store.search.subscribe((v) => (searchText = v));
@@ -50,6 +51,8 @@
     const startBook = async (book: Book) => {
         invoke("start_book", { work_id: book.id });
     };
+    
+    const openBook = (book: Book) => push(`/book/${book.id}`);
 
     const rightClickBook = async (event: MouseEvent, book: Book) => {
         rightClickedBook = book;
@@ -123,6 +126,7 @@
                 <div
                     class="book-item"
                     on:dblclick={() => startBook(book)}
+                    on:click={() => openBook(book)}
                     on:contextmenu|preventDefault={(e) =>
                         rightClickBook(e, book)}
                 >
@@ -160,6 +164,7 @@
                                     <div
                                         class="book-item"
                                         on:dblclick={() => startBook(book)}
+                                        on:click={() => openBook(book)}
                                         on:contextmenu|preventDefault={(e) =>
                                             rightClickBook(e, book)}
                                     >

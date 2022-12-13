@@ -10,10 +10,12 @@ use serde::{Deserialize, Serialize};
 // use serde_derive::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::PathBuf};
 use surrealdb::{
-    sql::{Array, Object, Value},
+    sql::{Object, Value},
     Datastore, Response, Session,
 };
 use tauri::Manager;
+use lofty::{read_from_path, AudioFile};
+use std::time::Duration;
 
 const LIBRARY_LOCATION: &str = r"G:\Audio\Spooken Word";
 const AUDIO_FILE_EXTENSIONS: [&str; 4] = ["mp4", "mp3", "m4b", "wav"];
@@ -51,7 +53,10 @@ fn main() {
             start_book,
             stop,
             clear,
-            close_splashscreen
+            close_splashscreen,
+            load_work,
+            library_stats,
+            load_work_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -59,7 +64,7 @@ fn main() {
 
 async fn get_db() -> (Datastore, Session) {
     (
-        Datastore::new("file://data.db").await.unwrap(),
+        Datastore::new("file://../data.db").await.unwrap(),
         Session::for_db("abp", "local"),
     )
 }
@@ -139,7 +144,6 @@ fn into_iter_objects(
     result: Vec<Response>,
 ) -> Result<impl Iterator<Item = Result<Object, String>>, String> {
     let resp = result.into_iter().next().map(|rp| rp.result).transpose()?;
-
     match resp {
         Some(Value::Array(arr)) => {
             let it = arr.into_iter().map(|v| match v {
@@ -381,3 +385,69 @@ async fn close_splashscreen(window: tauri::Window) {
     // Show main window
     window.get_window("main").unwrap().show().unwrap();
 }
+
+#[tauri::command]
+async fn load_work(work_id: String) -> Result<Work, LoadWorksError>{
+    let (ds, ses) = &get_db().await;
+
+    let ass = format!("SELECT * FROM {work_id} FETCH author");
+    let result = ds
+        .execute(ass.as_str(), ses, None, false)
+        .await;
+
+    if let Err(_) = result {
+        return Err(LoadWorksError);
+    }
+    
+    let mut objects = into_iter_objects(result.unwrap()).unwrap();
+    
+    let item = objects.nth(0).transpose();
+    
+    if item.is_err() {
+        return Err(LoadWorksError);
+    }
+    
+    let work = object_into_work(item.unwrap().unwrap());
+    
+    Ok(work)
+}
+
+#[tauri::command]
+async fn load_work_metadata(work_id: String) -> Result<Vec<TrackMetadata>,ReadFileMetadataError>{
+    let work = load_work(work_id).await.unwrap();
+    
+    let files: Vec<TrackMetadata> = work.audio_files.iter().map(|path:&String| read_file_metadata(path.clone()).unwrap()).collect::<Vec<TrackMetadata>>();
+    
+    println!("{files:?}");
+    
+    Ok(files)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ReadFileMetadataError {}
+
+fn read_file_metadata(path: String) -> Result<TrackMetadata, ReadFileMetadataError> {
+    let i = read_from_path(path.clone()).unwrap();
+    
+    let tag = i.primary_tag().unwrap();
+
+    let metadata = TrackMetadata {
+        path: path,
+        duration: i.properties().duration(),
+        track_title: tag.get_string(&lofty::ItemKey::TrackTitle).unwrap().to_owned(),
+        track_author: tag.get_string(&lofty::ItemKey::TrackArtist).unwrap().to_owned(),
+        album_title: tag.get_string(&lofty::ItemKey::AlbumTitle).unwrap().to_owned(),
+    };
+    
+    Ok(metadata)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct TrackMetadata {
+    path:String,
+    track_title:String,
+    track_author:String,
+    album_title:String,
+    duration:Duration,
+}
+

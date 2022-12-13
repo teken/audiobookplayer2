@@ -1,5 +1,6 @@
 <script lang="ts">
   import Library from "./lib/Library.svelte";
+  import Book from "./lib/Book.svelte";
   import { appWindow } from "@tauri-apps/api/window";
   import { invoke } from "@tauri-apps/api";
   import Router, { push } from "svelte-spa-router";
@@ -19,6 +20,7 @@
 
   const routes = {
     "/": Library,
+    "/book/:bookId": Book,
     "/settings": Settings,
     "/about": About,
   };
