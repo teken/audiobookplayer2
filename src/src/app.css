@@ -70,6 +70,14 @@ h1 {
 }
 
 button {
+  border: 0;
+  padding: 0;
+  font-size: 100%;
+  font-family: inherit;
+  background-color: transparent;
+}
+
+/* button:not(.ghost) {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -82,10 +90,10 @@ button {
   transition: border-color 0.25s;
 }
 
-button:focus,
-button:focus-visible {
+button:not(.ghost):focus,
+button:not(.ghost):focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
+} */
 
 input {
   background-color: var(--color4);

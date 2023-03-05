@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Segment } from "../types";
 
+    export let disabled: boolean = false;
     export let position: number = 0;
     export let positionUpdate: (value: number) => void = () => {};
     export let segments: Segment[] = [];
@@ -13,6 +14,7 @@
         (event: MouseEvent) => (mouseX = event.clientX)
     );
     const pickUp = () => {
+        if (disabled) return;
         indicatorPickedUp = true;
     };
     const putDown = () => {
@@ -24,6 +26,7 @@
     document.addEventListener("mouseup", putDown);
 
     const setPosition = (event: MouseEvent) => {
+        if (disabled) return;
         mouseX = event.clientX;
         positionUpdate(mouseX / barRef?.clientWidth ?? 0);
     };
@@ -38,6 +41,7 @@
     bind:this={barRef}
     on:click={setPosition}
     on:mousedown={pickUp}
+    class:ready={!disabled}
 >
     <g>
         {#if segments.length == 0}
@@ -66,25 +70,26 @@
             {/each}
         {/if}
     </g>
-
-    <circle
-        class="handle"
-        cx={indicatorPickedUp
-            ? mouseX - (barRef?.getBoundingClientRect()?.x ?? 0) >
-              barRef.clientWidth
-                ? barRef.clientWidth
-                : mouseX - (barRef?.getBoundingClientRect()?.x ?? 0) < 0
-                ? 0
-                : mouseX - (barRef?.getBoundingClientRect()?.x ?? 0)
-            : (position > 100 ? 100 : position < 0 ? 0 : position) + "%"}
-        cy="7.5"
-        r="5"
-        style="fill:var(--color)"
-    />
+    {#if !disabled}
+        <circle
+            class="handle"
+            cx={indicatorPickedUp
+                ? mouseX - (barRef?.getBoundingClientRect()?.x ?? 0) >
+                  barRef.clientWidth
+                    ? barRef.clientWidth
+                    : mouseX - (barRef?.getBoundingClientRect()?.x ?? 0) < 0
+                    ? 0
+                    : mouseX - (barRef?.getBoundingClientRect()?.x ?? 0)
+                : (position > 100 ? 100 : position < 0 ? 0 : position) + "%"}
+            cy="7.5"
+            r="5"
+            style="fill:var(--color)"
+        />
+    {/if}
 </svg>
 
 <style>
-    svg {
+    svg.ready {
         cursor: pointer;
     }
 

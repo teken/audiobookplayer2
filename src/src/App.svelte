@@ -5,6 +5,7 @@
   import { invoke } from "@tauri-apps/api";
   import Router, { push } from "svelte-spa-router";
   import SlimPlayer from "./lib/SlimPlayer.svelte";
+  import BackgroundPlayer from "./lib/BackgroundPlayer.svelte";
   import { Icon } from "svelte-fontawesome";
   import {
     faBook,
@@ -23,6 +24,7 @@
     "/book/:bookId": Book,
     "/settings": Settings,
     "/about": About,
+    "/background-player": BackgroundPlayer,
   };
 
   onMount(() => invoke("close_splashscreen"));

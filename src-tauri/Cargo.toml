@@ -21,13 +21,15 @@ env_logger = "0.10.0"
 surrealdb = "1.0.0-beta.8"
 tokio = { version = "1.22", features = ["macros", "rt-multi-thread"] }
 anyhow = "1"
-rodio = "0.16.0"
 regex = "1.7.0"
-confy = "0.5.1"
 serde_derive = "1.0.148"
 tauri-plugin-window-state = "0.1"
 lofty = "0.9"
 # audioplayer = { version = "0.0.0", path = "./player" }
+tauri-plugin-store = { git = "https://github.com/tauri-apps/tauri-plugin-store" }
+window-shadows = "0.2.0"
+mp4 = "0.13.0"
+
 
 [features]
 # by default Tauri runs in production mode

@@ -70,7 +70,8 @@
         "title": "AudioBookPlayer",
         "width": 1125,
         "visible": false,
-        "decorations": false
+        "decorations": false,
+        "label": "main"
       },
       {
         "width": 300,
@@ -78,6 +79,13 @@
         "decorations": false,
         "url": "splashscreen.html",
         "label": "splashscreen"
+      },
+      {
+        "height": 200,
+        "label": "background-player",
+        "width": 600,
+        "visible": false,
+        "url": "#/background-player"
       }
     ]
   }

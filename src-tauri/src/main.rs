@@ -4,51 +4,47 @@
 )]
 
 use anyhow::anyhow;
+use lofty::{read_from_path, AudioFile};
 use regex::Regex;
-use rodio::{OutputStream, Sink};
 use serde::{Deserialize, Serialize};
-// use serde_derive::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::BufReader;
+use std::time::Duration;
 use std::{collections::BTreeMap, fs, path::PathBuf};
 use surrealdb::{
     sql::{Object, Value},
     Datastore, Response, Session,
 };
 use tauri::Manager;
-use lofty::{read_from_path, AudioFile};
-use std::time::Duration;
+use tauri_plugin_store::{Store, StoreBuilder};
+use window_shadows::set_shadow;
 
 const LIBRARY_LOCATION: &str = r"G:\Audio\Spooken Word";
 const AUDIO_FILE_EXTENSIONS: [&str; 4] = ["mp4", "mp3", "m4b", "wav"];
+const AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS: [&str; 2] = ["mp4", "m4b"];
 const IMAGE_FILE_EXTENSIONS: [&str; 3] = ["jpg", "jpeg", "png"];
 
 struct AppState {
-    // settings: Settings,
-    sink: Sink,
+    settings: Store,
 }
-
-// #[derive(Default, Debug, Serialize, Deserialize, Clone)]
-// struct Settings {
-//     library_location: String,
-// }
 
 fn main() {
     env_logger::init();
 
-    // let settings: Settings = confy::load("audiobookplayer", "config").unwrap();
-
-    // confy::store("audiobookplayer", "config", settings.clone()).unwrap();
-
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    let sink = Sink::try_new(&stream_handle).unwrap();
+    let settings = StoreBuilder::new("./settings".parse().unwrap())
+        .default("the-key".to_string(), "wooooot".into())
+        .build();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .manage(AppState { sink })
+        .plugin(tauri_plugin_store::PluginBuilder::default().build())
+        .manage(AppState { settings })
         .invoke_handler(tauri::generate_handler![
             load,
             play,
             pause,
-            scan,
+            scan_folder,
+            scan_metadata,
             search,
             start_book,
             stop,
@@ -58,6 +54,27 @@ fn main() {
             library_stats,
             load_work_metadata,
         ])
+        .setup(|app| {
+            let main_window = app.get_window("main").unwrap();
+            set_shadow(&main_window, true).expect("Unsupported platform!");
+
+            let splashscreen = app.get_window("splashscreen").unwrap();
+            set_shadow(&splashscreen, true).expect("Unsupported platform!");
+
+            let background_player = app.get_window("background-player").unwrap();
+            background_player.show().unwrap();
+
+            let i = app.app_handle();
+            main_window.on_window_event(move |event| match event {
+                tauri::WindowEvent::Destroyed => {
+                    background_player.close().unwrap();
+                    i.exit(0);
+                }
+                _ => {}
+            });
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -92,7 +109,7 @@ async fn load() -> Result<Vec<Work>, LoadWorksError> {
         .execute("SELECT * FROM works FETCH author", ses, None, false)
         .await;
 
-    if let Err(_) = result {
+    if result.is_err() {
         return Err(LoadWorksError);
     }
 
@@ -106,17 +123,17 @@ async fn load() -> Result<Vec<Work>, LoadWorksError> {
 
 fn object_into_work(object: Object) -> Work {
     let series_str = object.get("series").map(|x| x.clone().as_string()).unwrap();
-    let series = if series_str.len() > 0 {
-        Some(series_str)
-    } else {
+    let series = if series_str.is_empty() {
         None
+    } else {
+        Some(series_str)
     };
 
     let files: Vec<String> = if let Value::Array(sub_object) = object.get("files").unwrap() {
         sub_object
             .clone()
             .into_iter()
-            .map(|x| x.clone().as_string())
+            .map(|x| x.as_string())
             .collect()
     } else {
         vec![]
@@ -132,7 +149,7 @@ fn object_into_work(object: Object) -> Work {
         } else {
             "".to_string()
         },
-        series: series,
+        series,
         path: object.get("path").map(|x| x.clone().as_string()).unwrap(),
         files: files.clone(),
         audio_files: get_files_by_extension(files.clone(), AUDIO_FILE_EXTENSIONS.to_vec()),
@@ -176,34 +193,41 @@ async fn search(search: String) -> Vec<Work> {
 }
 
 #[tauri::command]
-fn start_book(state: tauri::State<AppState>, work_id: String) {
-    // let files = fs::read_dir(book.path).unwrap();
+async fn start_book(app_handle: tauri::AppHandle, work_id: String) {
+    let work = load_work(work_id).await.unwrap();
 
-    // let audio_files = get_audio_files(files);
-    // for audio_file in audio_files {
-    //     let file = BufReader::new(File::open(audio_file.path()).unwrap());
-    //     let source = Decoder::new(file).unwrap();
-    //     state.sink.append(source);
-    // }
+    app_handle
+        .emit_all("load", work.clone().audio_files)
+        .unwrap();
+
+    let files: Vec<TrackMetadata> = work
+        .audio_files
+        .iter()
+        .map(|path: &String| read_file_metadata(path.clone()).unwrap())
+        .collect::<Vec<TrackMetadata>>();
+
+    app_handle.emit_all("load_metadata", files).unwrap();
+
+    // load chapters
+    // emit chapters
+    // app_handle.emit_all("load_chapters", chaters).unwrap();
+
+    app_handle.emit_all("play", ()).unwrap();
 }
 
 #[tauri::command]
-fn play(state: tauri::State<AppState>) {
-    if state.sink.is_paused() {
-        state.sink.play();
-    }
+fn play(app_handle: tauri::AppHandle) {
+    app_handle.emit_all("play", ()).unwrap();
 }
 
 #[tauri::command]
-fn pause(state: tauri::State<AppState>) {
-    if !state.sink.is_paused() {
-        state.sink.pause();
-    }
+fn pause(app_handle: tauri::AppHandle) {
+    app_handle.emit_all("pause", ()).unwrap();
 }
 
 #[tauri::command]
-fn stop(state: tauri::State<AppState>) {
-    state.sink.stop();
+fn stop(app_handle: tauri::AppHandle) {
+    app_handle.emit_all("unload", ()).unwrap();
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Default)]
@@ -232,7 +256,7 @@ fn get_files_by_extension(files: Vec<String>, extenions: Vec<&str>) -> Vec<Strin
 }
 
 #[tauri::command]
-async fn scan() {
+async fn scan_folder() {
     let (ds, ses) = &get_db().await;
 
     println!("library scanning");
@@ -307,6 +331,9 @@ async fn scan() {
 
     println!("library scanned ans saved");
 }
+
+#[tauri::command]
+fn scan_metadata() {}
 
 fn string_to_id(item: String) -> String {
     Regex::new(r"[^a-zA-Z0-9]")
@@ -384,42 +411,51 @@ async fn close_splashscreen(window: tauri::Window) {
     }
     // Show main window
     window.get_window("main").unwrap().show().unwrap();
+    // window
+    //     .get_window("background-player")
+    //     .unwrap()
+    //     .hide()
+    //     .unwrap();
 }
 
 #[tauri::command]
-async fn load_work(work_id: String) -> Result<Work, LoadWorksError>{
+async fn load_work(work_id: String) -> Result<Work, LoadWorksError> {
     let (ds, ses) = &get_db().await;
 
     let ass = format!("SELECT * FROM {work_id} FETCH author");
-    let result = ds
-        .execute(ass.as_str(), ses, None, false)
-        .await;
+    let result = ds.execute(ass.as_str(), ses, None, false).await;
 
-    if let Err(_) = result {
+    if result.is_err() {
         return Err(LoadWorksError);
     }
-    
-    let mut objects = into_iter_objects(result.unwrap()).unwrap();
-    
-    let item = objects.nth(0).transpose();
-    
+
+    let objects = into_iter_objects(result.unwrap());
+
+    if objects.is_err() {
+        return Err(LoadWorksError);
+    }
+
+    let item = objects.unwrap().next().transpose();
+
     if item.is_err() {
         return Err(LoadWorksError);
     }
-    
+
     let work = object_into_work(item.unwrap().unwrap());
-    
+
     Ok(work)
 }
 
 #[tauri::command]
-async fn load_work_metadata(work_id: String) -> Result<Vec<TrackMetadata>,ReadFileMetadataError>{
+async fn load_work_metadata(work_id: String) -> Result<Vec<TrackMetadata>, ReadFileMetadataError> {
     let work = load_work(work_id).await.unwrap();
-    
-    let files: Vec<TrackMetadata> = work.audio_files.iter().map(|path:&String| read_file_metadata(path.clone()).unwrap()).collect::<Vec<TrackMetadata>>();
-    
-    println!("{files:?}");
-    
+
+    let files: Vec<TrackMetadata> = work
+        .audio_files
+        .iter()
+        .map(|path: &String| read_file_metadata(path.clone()).unwrap())
+        .collect::<Vec<TrackMetadata>>();
+
     Ok(files)
 }
 
@@ -428,26 +464,72 @@ struct ReadFileMetadataError {}
 
 fn read_file_metadata(path: String) -> Result<TrackMetadata, ReadFileMetadataError> {
     let i = read_from_path(path.clone()).unwrap();
-    
+
     let tag = i.primary_tag().unwrap();
 
+    let mut chapters = vec![];
+
+    let c_path = PathBuf::from(path.clone());
+    if c_path.extension().is_some()
+        && AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS
+            .contains(&c_path.extension().unwrap().to_str().unwrap())
+    {
+        let f = File::open(path.clone()).unwrap();
+        let size = f.metadata().unwrap().len();
+        let reader = BufReader::new(f);
+        let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
+        for track in mp4.tracks().values() {
+            chapters.push(Chapter {
+                title: tag
+                    .get_string(&lofty::ItemKey::TrackTitle)
+                    .unwrap_or_default()
+                    .to_owned(),
+                length: track.duration(),
+            });
+        }
+    } else {
+        chapters.push(Chapter {
+            title: tag
+                .get_string(&lofty::ItemKey::TrackTitle)
+                .unwrap_or_default()
+                .to_owned(),
+            length: i.properties().duration(),
+        });
+    }
+
     let metadata = TrackMetadata {
-        path: path,
+        path,
         duration: i.properties().duration(),
-        track_title: tag.get_string(&lofty::ItemKey::TrackTitle).unwrap().to_owned(),
-        track_author: tag.get_string(&lofty::ItemKey::TrackArtist).unwrap().to_owned(),
-        album_title: tag.get_string(&lofty::ItemKey::AlbumTitle).unwrap().to_owned(),
+        track_title: tag
+            .get_string(&lofty::ItemKey::TrackTitle)
+            .unwrap_or_default()
+            .to_owned(),
+        track_author: tag
+            .get_string(&lofty::ItemKey::TrackArtist)
+            .unwrap_or_default()
+            .to_owned(),
+        album_title: tag
+            .get_string(&lofty::ItemKey::AlbumTitle)
+            .unwrap_or_default()
+            .to_owned(),
+        chapters,
     };
-    
+
     Ok(metadata)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct TrackMetadata {
-    path:String,
-    track_title:String,
-    track_author:String,
-    album_title:String,
-    duration:Duration,
+    path: String,
+    track_title: String,
+    track_author: String,
+    album_title: String,
+    duration: Duration,
+    chapters: Vec<Chapter>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Chapter {
+    title: String,
+    length: Duration,
+}

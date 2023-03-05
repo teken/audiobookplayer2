@@ -49,9 +49,9 @@
     };
 
     const startBook = async (book: Book) => {
-        invoke("start_book", { work_id: book.id });
+        invoke("start_book", { workId: book.id });
     };
-    
+
     const openBook = (book: Book) => push(`/book/${book.id}`);
 
     const rightClickBook = async (event: MouseEvent, book: Book) => {
@@ -99,19 +99,21 @@
 </div>
 {#if displayRightClickMenu}
     <Portal>
-        <div class="overlay" on:click={() => dispelRightClick()}>
-            <ul
+        <button class="overlay" on:click={() => dispelRightClick()}>
+            <div
                 class="right-click-menu"
                 style="left:{rightClickXY.x}px;top:{rightClickXY.y}px;"
             >
-                <li>Play from Start</li>
-                <li>Play from {secondsToFormatted(23423)}</li>
-                <li>Clear Play time</li>
-                <li on:click={() => shell.open(rightClickedBook.path)}>
+                <button on:click={() => startBook(rightClickedBook)}>
+                    Play from Start
+                </button>
+                <button>Play from {secondsToFormatted(23423)}</button>
+                <button>Clear Play time</button>
+                <button on:click={() => shell.open(rightClickedBook.path)}>
                     Show in File Explorer
-                </li>
-            </ul>
-        </div>
+                </button>
+            </div>
+        </button>
     </Portal>
 {/if}
 
@@ -123,7 +125,7 @@
     <div class="library {displaySearchResults ? 'search-result' : ''}">
         {#if displaySearchResults}
             {#each data as book}
-                <div
+                <button
                     class="book-item"
                     on:dblclick={() => startBook(book)}
                     on:click={() => openBook(book)}
@@ -148,7 +150,7 @@
                     <span class="label">{book.name}</span>
                     <span class="label">{book.series ?? ""}</span>
                     <span class="label">{book.author}</span>
-                </div>
+                </button>
             {/each}
         {:else}
             {#each sortLibrary(data) as [author, series]}
@@ -161,7 +163,7 @@
                                     <span class="label">{serie}</span>
                                 {/if}
                                 {#each books as book}
-                                    <div
+                                    <button
                                         class="book-item"
                                         on:dblclick={() => startBook(book)}
                                         on:click={() => openBook(book)}
@@ -186,7 +188,7 @@
                                             />
                                         {/if}
                                         <span class="label">{book.name}</span>
-                                    </div>
+                                    </button>
                                 {/each}
                             </div>
                         {/each}
@@ -330,28 +332,29 @@
 
     .right-click-menu {
         position: absolute;
-        list-style: none;
         padding: 0;
         margin: 0;
         background-color: var(--color5);
         z-index: 2;
         border-radius: 0.3rem;
+        display: flex;
+        flex-direction: column;
     }
 
-    .right-click-menu li {
+    .right-click-menu button {
         padding: 0.3rem 1rem;
     }
 
-    .right-click-menu li:hover {
+    .right-click-menu button:hover {
         background-color: var(--color4);
         cursor: pointer;
     }
 
-    .right-click-menu li:first-of-type:hover {
+    .right-click-menu button:first-of-type:hover {
         border-radius: 0.3rem 0.3rem 0 0;
     }
 
-    .right-click-menu li:last-of-type:hover {
+    .right-click-menu button:last-of-type:hover {
         border-radius: 0 0 0.3rem 0.3rem;
     }
 </style>

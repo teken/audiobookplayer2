@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { invoke } from "@tauri-apps/api";
     import { playerState as playerStateStore } from "../store";
-
+    import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+    import { onDestroy, onMount } from "svelte";
     import { Icon } from "svelte-fontawesome";
     import {
         faPlay,
@@ -17,10 +17,12 @@
     } from "@fortawesome/free-solid-svg-icons";
     import ProgressBar from "./ProgressBar.svelte";
     import { secondsToFormatted } from "../util";
-    import { PlayerState } from "../types";
+    import { PlayerState, type TrackMetadata } from "../audioplayer";
 
     let playerState = new PlayerState();
-    playerStateStore.subscribe((x) => (playerState = x));
+    playerStateStore.subscribe((x) => {
+        playerState = x;
+    });
 
     const volumnIcon = () => {
         if (playerState.volumn <= 0) return faVolumeOff;
@@ -30,7 +32,7 @@
 
     const positionUpdater = (value) => {
         playerStateStore.update((old: PlayerState) => {
-            old.position = value * old.duration;
+            old.updatePosition(value * old.duration);
             return old;
         });
     };
@@ -57,6 +59,58 @@
             return old;
         });
     };
+
+    let unlisteners: UnlistenFn[] = [];
+
+    onDestroy(() => {
+        unlisteners.forEach((unlisten) => unlisten());
+    });
+
+    onMount(async () => {
+        unlisteners = [
+            await listen<string[]>("load", () => {
+                playerStateStore.update((old) => {
+                    old.ready = true;
+                    return old;
+                });
+            }),
+            await listen<TrackMetadata[]>("load_metadata", (event) => {
+                playerStateStore.update((old) => {
+                    old.fileMetadata = event.payload;
+                    return old;
+                });
+            }),
+            await listen("play", () =>
+                playerStateStore.update((old) => {
+                    old.playing = true;
+                    return old;
+                })
+            ),
+            await listen("pause", () =>
+                playerStateStore.update((old) => {
+                    old.playing = false;
+                    return old;
+                })
+            ),
+            await listen("stop", () =>
+                playerStateStore.update((old) => {
+                    old.ready = false;
+                    return old;
+                })
+            ),
+            await listen<{
+                position: number;
+                duration: number;
+                fileIndex: number;
+            }>("update_file_position", (event) => {
+                playerStateStore.update((old) => {
+                    old.filePosition = event.payload.position;
+                    old.fileIndexPosition = event.payload.fileIndex;
+                    return old;
+                });
+            }),
+        ];
+    });
 </script>
 
 <footer>
@@ -69,7 +123,7 @@
         on:mousemove={barMouseMove}
         bind:this={bar}
     >
-        {#if displayTimeIndicator}
+        {#if playerState.ready && displayTimeIndicator}
             <div
                 bind:this={timeIndicator}
                 class="mouse-hover-indicator"
@@ -89,6 +143,7 @@
         {/if}
 
         <ProgressBar
+            disabled={!playerState.ready}
             position={playerState.positionAsPercentage}
             positionUpdate={positionUpdater}
             segments={playerState.chaptersAsSegments}
@@ -96,18 +151,27 @@
     </div>
 
     <span class="left">
-        <button on:click={() => invoke("play")}
+        <button
+            disabled={!playerState.ready}
+            on:click={() => emit("step_backward")}
             ><Icon icon={faBackwardStep} /></button
         >
-        <button on:click={() => invoke("pause")}
+        <button
+            disabled={!playerState.ready}
+            on:click={() =>
+                playerState.playing ? emit("pause") : emit("play")}
             ><Icon icon={playerState.playing ? faPause : faPlay} /></button
         >
-        <button on:click={() => invoke("stop")}
+        <button
+            disabled={!playerState.ready}
+            on:click={() => emit("step_forward")}
             ><Icon icon={faForwardStep} /></button
         >
-        <div>
-            {playerState.positionFormatted} - {playerState.durationFormatted}
-        </div>
+        {#if playerState.ready}
+            <div>
+                {playerState.positionFormatted} - {playerState.durationFormatted}
+            </div>
+        {/if}
     </span>
     <span class="right">
         <button on:click={() => toggleMute()}>
