@@ -5,6 +5,7 @@
 
 use anyhow::anyhow;
 use lofty::{read_from_path, AudioFile};
+use log::{error, info};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -62,7 +63,7 @@ fn main() {
             set_shadow(&splashscreen, true).expect("Unsupported platform!");
 
             let background_player = app.get_window("background-player").unwrap();
-            background_player.show().unwrap();
+            // background_player.show().unwrap();
 
             let i = app.app_handle();
             main_window.on_window_event(move |event| match event {
@@ -259,7 +260,7 @@ fn get_files_by_extension(files: Vec<String>, extenions: Vec<&str>) -> Vec<Strin
 async fn scan_folder() {
     let (ds, ses) = &get_db().await;
 
-    println!("library scanning");
+    info!("library scanning");
     let mut library: Vec<Work> = vec![];
     let authors = fs::read_dir(LIBRARY_LOCATION);
     for author in authors.unwrap() {
@@ -325,11 +326,11 @@ async fn scan_folder() {
 
     for work in library {
         if let Err(err) = create_work(ds, ses, work).await {
-            println!("Failed to add work: {err}")
+            error!("Failed to add work: {err}")
         }
     }
 
-    println!("library scanned ans saved");
+    info!("library scanned ans saved");
 }
 
 #[tauri::command]
@@ -405,12 +406,16 @@ async fn library_stats() {
 
 #[tauri::command]
 async fn close_splashscreen(window: tauri::Window) {
-    // Close splashscreen
-    if let Some(splashscreen) = window.get_window("splashscreen") {
-        splashscreen.close().unwrap();
-    }
-    // Show main window
-    window.get_window("main").unwrap().show().unwrap();
+    window
+        .get_window("splashscreen")
+        .expect("splashscreen not found")
+        .close()
+        .expect("splashscreen not closed");
+    window
+        .get_window("main")
+        .expect("main not found")
+        .show()
+        .expect("main not opened");
 }
 
 #[tauri::command]
@@ -532,21 +537,3 @@ struct Chapter {
     title: String,
     length: Duration,
 }
-
-// fn format_milli(time: u64) -> String {
-//     format!(
-//         "{}:{}:{}",
-//         (Duration::from_millis(time).as_secs() / 60) / 60,
-//         (Duration::from_millis(time).as_secs() / 60) % 60,
-//         Duration::from_millis(time).as_secs() % 60,
-//     )
-// }
-
-// fn format_duration(time: Duration) -> String {
-//     format!(
-//         "{}:{}:{}",
-//         (time.as_secs() / 60) / 60,
-//         (time.as_secs() / 60) % 60,
-//         time.as_secs() % 60,
-//     )
-// }
