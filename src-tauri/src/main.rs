@@ -20,8 +20,8 @@ use tauri_plugin_store::{Store, StoreBuilder};
 use window_shadows::set_shadow;
 
 const LIBRARY_LOCATION: &str = r"G:\Audio\Spooken Word";
-const AUDIO_FILE_EXTENSIONS: [&str; 4] = ["mp4", "mp3", "m4b", "wav"];
-const AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS: [&str; 2] = ["mp4", "m4b"];
+const AUDIO_FILE_EXTENSIONS: [&str; 5] = ["mp4", "mp3", "m4a", "m4b", "wav"];
+const AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS: [&str; 3] = ["mp4", "m4a", "m4b"];
 const IMAGE_FILE_EXTENSIONS: [&str; 3] = ["jpg", "jpeg", "png"];
 
 struct AppState {
@@ -411,11 +411,6 @@ async fn close_splashscreen(window: tauri::Window) {
     }
     // Show main window
     window.get_window("main").unwrap().show().unwrap();
-    // window
-    //     .get_window("background-player")
-    //     .unwrap()
-    //     .hide()
-    //     .unwrap();
 }
 
 #[tauri::command]
@@ -423,25 +418,19 @@ async fn load_work(work_id: String) -> Result<Work, LoadWorksError> {
     let (ds, ses) = &get_db().await;
 
     let ass = format!("SELECT * FROM {work_id} FETCH author");
-    let result = ds.execute(ass.as_str(), ses, None, false).await;
-
-    if result.is_err() {
+    let Ok(result) = ds.execute(ass.as_str(), ses, None, false).await else {
         return Err(LoadWorksError);
-    }
+    };
 
-    let objects = into_iter_objects(result.unwrap());
-
-    if objects.is_err() {
+    let Ok(mut objects) = into_iter_objects(result) else {
         return Err(LoadWorksError);
-    }
+    };
 
-    let item = objects.unwrap().next().transpose();
-
-    if item.is_err() {
+    let Some(Ok(item)) = objects.next() else {
         return Err(LoadWorksError);
-    }
+    };
 
-    let work = object_into_work(item.unwrap().unwrap());
+    let work = object_into_work(item);
 
     Ok(work)
 }
@@ -463,9 +452,9 @@ async fn load_work_metadata(work_id: String) -> Result<Vec<TrackMetadata>, ReadF
 struct ReadFileMetadataError {}
 
 fn read_file_metadata(path: String) -> Result<TrackMetadata, ReadFileMetadataError> {
-    let i = read_from_path(path.clone()).unwrap();
+    let file = read_from_path(path.clone()).unwrap();
 
-    let tag = i.primary_tag().unwrap();
+    let tag = file.primary_tag().unwrap();
 
     let mut chapters = vec![];
 
@@ -477,14 +466,24 @@ fn read_file_metadata(path: String) -> Result<TrackMetadata, ReadFileMetadataErr
         let f = File::open(path.clone()).unwrap();
         let size = f.metadata().unwrap().len();
         let reader = BufReader::new(f);
-        let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
-        for track in mp4.tracks().values() {
+        let mut mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
+
+        let track = mp4
+            .tracks()
+            .values()
+            .find(|x| x.media_type().is_err())
+            .unwrap();
+        let track_id = track.track_id();
+        for i in 0..track.sample_count() {
+            let sample = mp4.read_sample(track_id, i + 1).unwrap().unwrap();
+
             chapters.push(Chapter {
-                title: tag
-                    .get_string(&lofty::ItemKey::TrackTitle)
-                    .unwrap_or_default()
-                    .to_owned(),
-                length: track.duration(),
+                title: format!("Chapter {}", i),
+                length: if sample.duration == 0 {
+                    file.properties().duration() - Duration::from_millis(sample.start_time)
+                } else {
+                    Duration::from_millis(sample.duration.into())
+                },
             });
         }
     } else {
@@ -493,13 +492,13 @@ fn read_file_metadata(path: String) -> Result<TrackMetadata, ReadFileMetadataErr
                 .get_string(&lofty::ItemKey::TrackTitle)
                 .unwrap_or_default()
                 .to_owned(),
-            length: i.properties().duration(),
+            length: file.properties().duration(),
         });
     }
 
     let metadata = TrackMetadata {
         path,
-        duration: i.properties().duration(),
+        duration: file.properties().duration(),
         track_title: tag
             .get_string(&lofty::ItemKey::TrackTitle)
             .unwrap_or_default()
@@ -533,3 +532,21 @@ struct Chapter {
     title: String,
     length: Duration,
 }
+
+// fn format_milli(time: u64) -> String {
+//     format!(
+//         "{}:{}:{}",
+//         (Duration::from_millis(time).as_secs() / 60) / 60,
+//         (Duration::from_millis(time).as_secs() / 60) % 60,
+//         Duration::from_millis(time).as_secs() % 60,
+//     )
+// }
+
+// fn format_duration(time: Duration) -> String {
+//     format!(
+//         "{}:{}:{}",
+//         (time.as_secs() / 60) / 60,
+//         (time.as_secs() / 60) % 60,
+//         time.as_secs() % 60,
+//     )
+// }
