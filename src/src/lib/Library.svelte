@@ -9,6 +9,7 @@
     import Loading from "./Loading.svelte";
     import Portal from "svelte-portal";
     import { push } from "svelte-spa-router";
+    import type { Duration } from "../audioplayer";
 
     let searchText = "";
     store.search.subscribe((v) => (searchText = v));
@@ -18,9 +19,10 @@
     let loadLibrary: Promise<Book[]> = Promise.resolve([]);
     let displayRightClickMenu = false;
     let rightClickedBook: Book;
+    let loadRightClickedBookTime: Promise<Duration>;
     let rightClickXY = { x: 0, y: 0 };
 
-    onMount(() => (loadLibrary = invoke("load")));
+    onMount(() => (loadLibrary = invoke("load_library")));
 
     const sortLibrary = (data: Book[]) => {
         const library = data.sort(
@@ -45,7 +47,7 @@
         displaySearchResults = searchText.length != 0;
 
         if (searchText) loadLibrary = invoke("search", { search: searchText });
-        else loadLibrary = invoke("load");
+        else loadLibrary = invoke("load_library");
     };
 
     const startBook = async (book: Book) => {
@@ -58,6 +60,9 @@
         rightClickedBook = book;
         displayRightClickMenu = true;
         rightClickXY = { x: event.clientX, y: event.y };
+        loadRightClickedBookTime = invoke<Duration>("load_book_time", {
+            workId: book.id,
+        });
 
         // let maxY = event.clientY + rightClickMenu.clientHeight;
         //
@@ -107,7 +112,13 @@
                 <button on:click={() => startBook(rightClickedBook)}>
                     Play from Start
                 </button>
-                <button>Play from {secondsToFormatted(23423)}</button>
+                {#await loadRightClickedBookTime}
+                    <button>Play from --:--:--</button>
+                {:then data}
+                    <button on:click={() => startBook(rightClickedBook)}
+                        >Play from {secondsToFormatted(data.secs)}</button
+                    >
+                {/await}
                 <button>Clear Play time</button>
                 <button on:click={() => shell.open(rightClickedBook.path)}>
                     Show in File Explorer

@@ -69,13 +69,13 @@
 
     onMount(async () => {
         unlisteners = [
-            await listen<string[]>("load", () => {
+            await listen<string[]>("work_loaded", () => {
                 playerStateStore.update((old) => {
                     old.ready = true;
                     return old;
                 });
             }),
-            await listen<TrackMetadata[]>("load_metadata", (event) => {
+            await listen<TrackMetadata[]>("metadata_loaded", (event) => {
                 playerStateStore.update((old) => {
                     old.fileMetadata = event.payload;
                     return old;

@@ -28,9 +28,12 @@
 
         const player = new AudioPlayer();
 
-        loadUnlistener = await listen<string[]>("load", ({ payload }) => {
-            player.load(payload);
-        });
+        loadUnlistener = await listen<string[]>(
+            "work_loaded",
+            ({ payload }) => {
+                player.load(payload);
+            }
+        );
 
         playUnlistener = await listen("play", () => player.play());
         pauseUnlistener = await listen("pause", () => player.pause());

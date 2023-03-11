@@ -41,7 +41,7 @@ fn main() {
         .plugin(tauri_plugin_store::PluginBuilder::default().build())
         .manage(AppState { settings })
         .invoke_handler(tauri::generate_handler![
-            load,
+            load_library,
             play,
             pause,
             scan_folder,
@@ -54,6 +54,7 @@ fn main() {
             load_work,
             library_stats,
             load_work_metadata,
+            load_book_time,
         ])
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();
@@ -105,7 +106,7 @@ async fn clear() -> Result<(), ClearDatabaseError> {
 struct LoadWorksError;
 
 #[tauri::command]
-async fn load() -> Result<Vec<Work>, LoadWorksError> {
+async fn load_library() -> Result<Vec<Work>, LoadWorksError> {
     let (ds, ses) = &get_db().await;
 
     let result = ds
@@ -200,7 +201,7 @@ async fn start_book(app_handle: tauri::AppHandle, work_id: String) {
     let work = load_work(work_id).await.unwrap();
 
     app_handle
-        .emit_all("load", work.clone().audio_files)
+        .emit_all("work_loaded", work.clone().audio_files)
         .unwrap();
 
     let files: Vec<TrackMetadata> = work
@@ -209,12 +210,7 @@ async fn start_book(app_handle: tauri::AppHandle, work_id: String) {
         .map(|path: &String| read_file_metadata(path.clone()).unwrap())
         .collect::<Vec<TrackMetadata>>();
 
-    app_handle.emit_all("load_metadata", files).unwrap();
-
-    // load chapters
-    // emit chapters
-    // app_handle.emit_all("load_chapters", chaters).unwrap();
-
+    app_handle.emit_all("metadata_loaded", files).unwrap();
     app_handle.emit_all("play", ()).unwrap();
 }
 
@@ -538,4 +534,12 @@ struct TrackMetadata {
 struct Chapter {
     title: String,
     length: Duration,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ReadWorkDataError {}
+
+#[tauri::command]
+async fn load_book_time(work_id: String) -> Result<Duration, ReadWorkDataError> {
+    Ok(Duration::from_secs(23456))
 }

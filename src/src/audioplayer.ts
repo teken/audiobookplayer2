@@ -130,8 +130,7 @@ export class PlayerState {
 
     set muted(value: boolean) {
         this._muted = value;
-        if (value) emit("set_volumn", 0);
-        else emit("set_volumn", this._volumn);
+        emit("set_volumn", value ? 0 : this._volumn);
     }
 
 
