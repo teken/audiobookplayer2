@@ -3,24 +3,10 @@
     import { onDestroy, onMount } from "svelte";
     import { AudioPlayer } from "../audioplayer";
 
-    let loadUnlistener: UnlistenFn;
-    let playUnlistener: UnlistenFn;
-    let pauseUnlistener: UnlistenFn;
-    let stopUnlistener: UnlistenFn;
-    let forwardUnlistener: UnlistenFn;
-    let backwardUnlistener: UnlistenFn;
-    let setPositionUnlistener: UnlistenFn;
-    let setVolumnUnlistener: UnlistenFn;
+    let unlisteners: UnlistenFn[] = [];
 
     onDestroy(() => {
-        if (loadUnlistener) loadUnlistener();
-        if (playUnlistener) playUnlistener();
-        if (pauseUnlistener) pauseUnlistener();
-        if (stopUnlistener) stopUnlistener();
-        if (forwardUnlistener) forwardUnlistener();
-        if (backwardUnlistener) backwardUnlistener();
-        if (setPositionUnlistener) setPositionUnlistener();
-        if (setVolumnUnlistener) setVolumnUnlistener();
+        unlisteners.forEach((unlisten) => unlisten());
     });
 
     onMount(async () => {
@@ -28,34 +14,30 @@
 
         const player = new AudioPlayer();
 
-        loadUnlistener = await listen<string[]>(
-            "work_loaded",
-            ({ payload }) => {
+        unlisteners = [
+            await listen<string[]>("work_loaded", ({ payload }) => {
                 player.load(payload);
-            }
-        );
+            }),
 
-        playUnlistener = await listen("play", () => player.play());
-        pauseUnlistener = await listen("pause", () => player.pause());
+            await listen("play", () => player.play()),
+            await listen("pause", () => player.pause()),
 
-        stopUnlistener = await listen("stop", () => player.unload());
+            await listen("stop", () => player.unload()),
 
-        forwardUnlistener = await listen("step_forward", () => player.foward());
-        backwardUnlistener = await listen("step_backward", () =>
-            player.backward()
-        );
+            await listen("step_forward", () => player.foward()),
+            await listen("step_backward", () => player.backward()),
 
-        setPositionUnlistener = await listen<{
-            position: number;
-            index: number;
-        }>("set_file_position", ({ payload }) => {
-            player.setPosition(payload);
-        });
+            await listen<{
+                position: number;
+                index: number;
+            }>("set_file_position", ({ payload }) => {
+                player.setPosition(payload);
+            }),
 
-        setVolumnUnlistener = await listen<number>(
-            "set_volumn",
-            ({ payload }) => player.setVolumn(payload)
-        );
+            await listen<number>("set_volumn", ({ payload }) =>
+                player.setVolumn(payload)
+            ),
+        ];
     });
 </script>
 
