@@ -18,6 +18,7 @@
     import ProgressBar from "./ProgressBar.svelte";
     import { secondsToFormatted } from "../util";
     import { PlayerState, type TrackMetadata } from "../audioplayer";
+    import Loading from "./Loading.svelte";
 
     let playerState = new PlayerState();
     playerStateStore.subscribe((x) => {
@@ -37,7 +38,7 @@
         });
     };
 
-    const volumnUpdater = (value) => {
+    const volumnUpdater = (value: number) => {
         playerStateStore.update((old: PlayerState) => {
             old.volumn = value * old.volumnMax;
             return old;
@@ -209,8 +210,6 @@
     .right {
         display: flex;
         align-items: center;
-        /* gap: 1rem; */
-        padding: 0 0.3rem;
     }
 
     .left {
@@ -228,14 +227,17 @@
         padding: 0.6rem 0.7rem;
     }
 
-    button:hover {
+    button:not(:disabled):hover {
         border: 0;
         background-color: var(--color4);
-        /* background-color: rgba(26, 26, 26, 0.5); */
     }
 
     button:focus {
         outline: 0;
+    }
+
+    button:disabled {
+        opacity: 0.5;
     }
 
     .mouse-hover-indicator {

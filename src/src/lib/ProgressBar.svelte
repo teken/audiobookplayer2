@@ -7,28 +7,38 @@
     export let segments: Segment[] = [];
 
     let barRef;
+
     let mouseX = 0;
     let indicatorPickedUp = false;
     document.addEventListener(
         "mousemove",
         (event: MouseEvent) => (mouseX = event.clientX)
     );
-    const pickUp = () => {
-        if (disabled) return;
+    const pickUp = (event: MouseEvent) => {
+        if (disabled || event.button !== 1) return;
         indicatorPickedUp = true;
     };
     const putDown = () => {
         if (indicatorPickedUp) {
             indicatorPickedUp = false;
-            positionUpdate(mouseX / barRef?.clientWidth ?? 0);
+            const docX = barRef?.getBoundingClientRect()?.x ?? 0;
+            positionUpdate(
+                Math.min(
+                    Math.max((mouseX - docX) / barRef?.clientWidth ?? 0, 0),
+                    1
+                )
+            );
         }
     };
     document.addEventListener("mouseup", putDown);
 
     const setPosition = (event: MouseEvent) => {
-        if (disabled) return;
+        if (disabled || event.button !== 1) return;
         mouseX = event.clientX;
-        positionUpdate(mouseX / barRef?.clientWidth ?? 0);
+        const docX = barRef?.getBoundingClientRect()?.x ?? 0;
+        positionUpdate(
+            Math.min(Math.max((mouseX - docX) / barRef?.clientWidth ?? 0, 0), 1)
+        );
     };
     const segmentBarGap = 0.5;
 </script>
@@ -37,7 +47,7 @@
 <svg
     width="100%"
     height="1rem"
-    style="--color:var(--color1)"
+    style="--color:var(--color1); box-sizing:border-box; overflow:visible;"
     bind:this={barRef}
     on:click={setPosition}
     on:mousedown={pickUp}
@@ -83,7 +93,7 @@
                 : (position > 100 ? 100 : position < 0 ? 0 : position) + "%"}
             cy="7.5"
             r="5"
-            style="fill:var(--color)"
+            style="fill:var(--color1); stroke:var(--color2); stroke-width:1"
         />
     {/if}
 </svg>

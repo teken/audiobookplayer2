@@ -68,7 +68,9 @@ fn main() {
             let i = app.app_handle();
             main_window.on_window_event(move |event| match event {
                 tauri::WindowEvent::Destroyed => {
-                    background_player.close().unwrap();
+                    background_player
+                        .close()
+                        .expect("Failed to close background_player");
                     i.exit(0);
                 }
                 _ => {}

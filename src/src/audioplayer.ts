@@ -80,9 +80,10 @@ export class AudioPlayer {
 export class PlayerState {
     ready: boolean = false;
     playing: boolean = false;
-    muted: boolean = false;
 
-    volumn: number = 1.0;
+    private _muted: boolean = false;
+    private _volumn: number = 1.0;
+
     volumnMax: number = 1.0;
 
     filePosition: number = 0;
@@ -127,12 +128,32 @@ export class PlayerState {
         }
     }
 
+    set muted(value: boolean) {
+        this._muted = value;
+        if (value) emit("set_volumn", 0);
+        else emit("set_volumn", this._volumn);
+    }
+
+
+    get muted() {
+        return this._muted;
+    }
+
+    set volumn(value: number) {
+        this._volumn = value;
+        emit("set_volumn", value);
+    }
+
+    get volumn() {
+        return this._volumn;
+    }
+
     get positionAsPercentage() {
         return (this.position / this.duration) * 100;
     }
 
     get volumnAsPercentage() {
-        return (this.volumn / this.volumnMax) * 100;
+        return (this._volumn / this.volumnMax) * 100;
     }
 
     get positionFormatted() {
