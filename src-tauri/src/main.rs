@@ -77,6 +77,10 @@ fn main() {
                 _ => {}
             });
 
+            main_window.listen("update_work_time", |event| {
+                // todo: save to disk
+            });
+
             Ok(())
         })
         .run(tauri::generate_context!())

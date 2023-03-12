@@ -101,15 +101,14 @@
             ),
             await listen<{
                 position: number;
-                duration: number;
                 fileIndex: number;
-            }>("update_file_position", (event) => {
+            }>("update_file_position", (event) =>
                 playerStateStore.update((old) => {
                     old.filePosition = event.payload.position;
                     old.fileIndexPosition = event.payload.fileIndex;
                     return old;
-                });
-            }),
+                })
+            ),
         ];
     });
 </script>

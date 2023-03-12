@@ -15,7 +15,6 @@ export class AudioPlayer {
         this.audio.addEventListener("timeupdate", () => {
             emit("update_file_position", {
                 position: this.audio.currentTime,
-                duration: this.audio.duration,
                 fileIndex: this.playingFileIndex,
             });
         });
@@ -175,7 +174,13 @@ export class PlayerState {
         });
     }
 
-    constructor() { }
+    constructor() {
+        setInterval(() => {
+            if (this.ready && this.playing) {
+                emit("update_work_time", { workId: '', position: this.position })
+            }
+        }, 1000);
+    }
 }
 
 export class Chapter {
