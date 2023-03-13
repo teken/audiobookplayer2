@@ -55,6 +55,7 @@ fn main() {
             library_stats,
             load_work_metadata,
             load_book_time,
+            update_work_time
         ])
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();
@@ -77,10 +78,6 @@ fn main() {
                 _ => {}
             });
 
-            main_window.listen("update_work_time", |event| {
-                // todo: save to disk
-            });
-
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -92,6 +89,25 @@ async fn get_db() -> (Datastore, Session) {
         Datastore::new("file://../data.db").await.unwrap(),
         Session::for_db("abp", "local"),
     )
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AddWorkTimeError;
+
+#[tauri::command]
+async fn update_work_time(work_id: String, position: f64) -> Result<(), AddWorkTimeError> {
+    let (ds, ses) = &get_db().await;
+    let Ok(work) = load_work(work_id.clone()).await else { todo!() };
+
+    let ass = format!(
+        "CREATE times CONTENT {{ work: {}, duration: $duration }}",
+        work_id
+    );
+    let data: BTreeMap<String, Value> = BTreeMap::from([("duration".into(), position.into())]);
+    match ds.execute(ass.as_str(), ses, Some(data), false).await {
+        Ok(_) => Ok(()),
+        Err(err) => Err(AddWorkTimeError),
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -113,19 +129,19 @@ struct LoadWorksError;
 async fn load_library() -> Result<Vec<Work>, LoadWorksError> {
     let (ds, ses) = &get_db().await;
 
-    let result = ds
+    let Ok(result) = ds
         .execute("SELECT * FROM works FETCH author", ses, None, false)
-        .await;
+        .await else {
+            return Err(LoadWorksError);
+        };
 
-    if result.is_err() {
+    let Ok(objects) = into_iter_objects(result) else {
         return Err(LoadWorksError);
-    }
-
-    let objects = into_iter_objects(result.unwrap()).unwrap();
+    };
 
     Ok(objects
         .into_iter()
-        .map(|object| object_into_work(object.unwrap()))
+        .map(|object| object_into_work(object.expect("should be good")))
         .collect())
 }
 
@@ -336,7 +352,9 @@ async fn scan_folder() {
 }
 
 #[tauri::command]
-fn scan_metadata() {}
+fn scan_metadata() {
+    // todo: build library by file metadata
+}
 
 fn string_to_id(item: String) -> String {
     Regex::new(r"[^a-zA-Z0-9]")
@@ -404,6 +422,7 @@ async fn library_stats() {
     // let result = ds.execute(ass.as_str(), ses, None, false).await.unwrap();
 
     // let objects = into_iter_objects(result).unwrap();
+    // todo: enable stats for about page
 }
 
 #[tauri::command]
@@ -544,6 +563,26 @@ struct Chapter {
 struct ReadWorkDataError {}
 
 #[tauri::command]
-async fn load_book_time(work_id: String) -> Result<Duration, ReadWorkDataError> {
-    Ok(Duration::from_secs(23456))
+async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
+    let (ds, ses) = &get_db().await;
+
+    let Ok(result) = ds
+        .execute("SELECT work=work_id FROM time", ses, None, false)
+        .await else {
+            return Err(ReadWorkDataError {});
+        };
+
+    let Ok(mut objects) = into_iter_objects(result) else {
+        return Err(ReadWorkDataError {});
+    };
+
+    let Some(Ok(obj)) = objects.next() else {
+        return Err(ReadWorkDataError {});
+    };
+
+    let dur = obj
+        .get("duration")
+        .map(|x| x.clone().as_float())
+        .unwrap_or_default();
+    Ok(dur)
 }

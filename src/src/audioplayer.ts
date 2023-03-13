@@ -1,5 +1,5 @@
 import { emit } from "@tauri-apps/api/event";
-import { tauri } from "@tauri-apps/api";
+import { invoke, tauri } from "@tauri-apps/api";
 import { secondsToFormatted } from "./util";
 import type { Segment } from "./types";
 
@@ -177,7 +177,7 @@ export class PlayerState {
     constructor() {
         setInterval(() => {
             if (this.ready && this.playing) {
-                emit("update_work_time", { workId: '', position: this.position })
+                invoke("update_work_time", { workId: '', position: this.position });
             }
         }, 1000);
     }

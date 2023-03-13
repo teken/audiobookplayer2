@@ -19,7 +19,7 @@
     let loadLibrary: Promise<Book[]> = Promise.resolve([]);
     let displayRightClickMenu = false;
     let rightClickedBook: Book;
-    let loadRightClickedBookTime: Promise<Duration>;
+    let loadRightClickedBookTime: Promise<number>;
     let rightClickXY = { x: 0, y: 0 };
 
     onMount(() => (loadLibrary = invoke("load_library")));
@@ -60,7 +60,7 @@
         rightClickedBook = book;
         displayRightClickMenu = true;
         rightClickXY = { x: event.clientX, y: event.y };
-        loadRightClickedBookTime = invoke<Duration>("load_book_time", {
+        loadRightClickedBookTime = invoke<number>("load_book_time", {
             workId: book.id,
         });
 
@@ -116,10 +116,10 @@
                     <button>Play from --:--:--</button>
                 {:then data}
                     <button on:click={() => startBook(rightClickedBook)}
-                        >Play from {secondsToFormatted(data.secs)}</button
+                        >Play from {secondsToFormatted(data)}</button
                     >
+                    <button>Clear Play time</button>
                 {/await}
-                <button>Clear Play time</button>
                 <button on:click={() => shell.open(rightClickedBook.path)}>
                     Show in File Explorer
                 </button>
