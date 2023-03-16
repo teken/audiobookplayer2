@@ -4,6 +4,8 @@
 )]
 
 use anyhow::anyhow;
+use dotenv::dotenv;
+use lofty::TaggedFileExt;
 use lofty::{read_from_path, AudioFile};
 use log::{error, info};
 use regex::Regex;
@@ -30,6 +32,7 @@ struct AppState {
 }
 
 fn main() {
+    dotenv().ok();
     env_logger::init();
 
     let settings = StoreBuilder::new("./settings".parse().unwrap())
@@ -68,14 +71,13 @@ fn main() {
             // background_player.show().unwrap();
 
             let i = app.app_handle();
-            main_window.on_window_event(move |event| match event {
-                tauri::WindowEvent::Destroyed => {
+            main_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::Destroyed = event {
                     background_player
                         .close()
                         .expect("Failed to close background_player");
                     i.exit(0);
                 }
-                _ => {}
             });
 
             Ok(())
@@ -84,11 +86,15 @@ fn main() {
         .expect("error while running tauri application");
 }
 
-async fn get_db() -> (Datastore, Session) {
-    (
-        Datastore::new("file://../data.db").await.unwrap(),
-        Session::for_db("abp", "local"),
-    )
+#[derive(Debug, Serialize, Deserialize)]
+struct FailedToOpenDb;
+
+async fn get_db() -> Result<(Datastore, Session), FailedToOpenDb> {
+    let db_path = std::env::var("SURREAL_PATH").unwrap_or("file://../data.db".to_owned());
+    let Ok(store) = Datastore::new(db_path.as_str()).await else {
+        return Err(FailedToOpenDb)
+    };
+    Ok((store, Session::for_db("abp", "local")))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -96,8 +102,7 @@ struct AddWorkTimeError;
 
 #[tauri::command]
 async fn update_work_time(work_id: String, position: f64) -> Result<(), AddWorkTimeError> {
-    let (ds, ses) = &get_db().await;
-    let Ok(work) = load_work(work_id.clone()).await else { todo!() };
+    let (ds, ses) = &get_db().await.expect("failed to open db");
 
     let ass = format!(
         "CREATE times CONTENT {{ work: {}, duration: $duration }}",
@@ -106,7 +111,7 @@ async fn update_work_time(work_id: String, position: f64) -> Result<(), AddWorkT
     let data: BTreeMap<String, Value> = BTreeMap::from([("duration".into(), position.into())]);
     match ds.execute(ass.as_str(), ses, Some(data), false).await {
         Ok(_) => Ok(()),
-        Err(err) => Err(AddWorkTimeError),
+        Err(_) => Err(AddWorkTimeError),
     }
 }
 
@@ -115,7 +120,7 @@ struct ClearDatabaseError;
 
 #[tauri::command]
 async fn clear() -> Result<(), ClearDatabaseError> {
-    let (ds, ses) = &get_db().await;
+    let (ds, ses) = &get_db().await.expect("failed to open db");
     match ds.execute("REMOVE TABLE works", ses, None, false).await {
         Ok(_) => Ok(()),
         Err(_) => Err(ClearDatabaseError),
@@ -127,7 +132,7 @@ struct LoadWorksError;
 
 #[tauri::command]
 async fn load_library() -> Result<Vec<Work>, LoadWorksError> {
-    let (ds, ses) = &get_db().await;
+    let (ds, ses) = &get_db().await.expect("failed to open db");
 
     let Ok(result) = ds
         .execute("SELECT * FROM works FETCH author", ses, None, false)
@@ -199,7 +204,7 @@ fn into_iter_objects(
 
 #[tauri::command]
 async fn search(search: String) -> Vec<Work> {
-    let (ds, ses) = &get_db().await;
+    let (ds, ses) = &get_db().await.expect("failed to open db");
 
     let ass = format!(
         "SELECT * FROM works WHERE \
@@ -276,7 +281,7 @@ fn get_files_by_extension(files: Vec<String>, extenions: Vec<&str>) -> Vec<Strin
 
 #[tauri::command]
 async fn scan_folder() {
-    let (ds, ses) = &get_db().await;
+    let (ds, ses) = &get_db().await.expect("failed to open db");
 
     info!("library scanning");
     let mut library: Vec<Work> = vec![];
@@ -402,7 +407,7 @@ async fn create_author(
         author_id.clone()
     );
     let data: BTreeMap<String, Value> =
-        BTreeMap::from([("name".into(), author_name.replace("'", r"\'").into())]);
+        BTreeMap::from([("name".into(), author_name.replace('\'', r"\'").into())]);
     match ds.execute(ass.as_str(), ses, Some(data), false).await {
         Ok(_) => anyhow::Ok(author_id),
         Err(err) => Err(anyhow!("failed to create work: {}", err)),
@@ -441,7 +446,7 @@ async fn close_splashscreen(window: tauri::Window) {
 
 #[tauri::command]
 async fn load_work(work_id: String) -> Result<Work, LoadWorksError> {
-    let (ds, ses) = &get_db().await;
+    let (ds, ses) = &get_db().await.expect("failed to open db");
 
     let ass = format!("SELECT * FROM {work_id} FETCH author");
     let Ok(result) = ds.execute(ass.as_str(), ses, None, false).await else {
@@ -478,9 +483,13 @@ async fn load_work_metadata(work_id: String) -> Result<Vec<TrackMetadata>, ReadF
 struct ReadFileMetadataError {}
 
 fn read_file_metadata(path: String) -> Result<TrackMetadata, ReadFileMetadataError> {
-    let file = read_from_path(path.clone()).unwrap();
+    let Ok(file) = read_from_path(path.clone()) else {
+        return Err(ReadFileMetadataError {});
+    };
 
-    let tag = file.primary_tag().unwrap();
+    let Some(tag) = file.primary_tag() else {
+        return Err(ReadFileMetadataError {});
+    };
 
     let mut chapters = vec![];
 
@@ -489,19 +498,26 @@ fn read_file_metadata(path: String) -> Result<TrackMetadata, ReadFileMetadataErr
         && AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS
             .contains(&c_path.extension().unwrap().to_str().unwrap())
     {
-        let f = File::open(path.clone()).unwrap();
+        let Ok(f) = File::open(path.clone())  else {
+            return Err(ReadFileMetadataError {});
+        };
         let size = f.metadata().unwrap().len();
         let reader = BufReader::new(f);
-        let mut mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
+        let Ok(mut mp4) = mp4::Mp4Reader::read_header(reader, size)  else {
+            return Err(ReadFileMetadataError {});
+        };
 
-        let track = mp4
+        let Some(track) = mp4
             .tracks()
             .values()
-            .find(|x| x.media_type().is_err())
-            .unwrap();
+            .find(|x| x.media_type().is_err()) else {
+                return Err(ReadFileMetadataError {});
+            };
         let track_id = track.track_id();
         for i in 0..track.sample_count() {
-            let sample = mp4.read_sample(track_id, i + 1).unwrap().unwrap();
+            let Ok(Some(sample)) = mp4.read_sample(track_id, i + 1) else {
+                return Err(ReadFileMetadataError {});
+            };
 
             chapters.push(Chapter {
                 title: format!("Chapter {}", i),
@@ -564,10 +580,10 @@ struct ReadWorkDataError {}
 
 #[tauri::command]
 async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
-    let (ds, ses) = &get_db().await;
-
+    let (ds, ses) = &get_db().await.expect("failed to open db");
+    let ass = format!("SELECT work={work_id} FROM time");
     let Ok(result) = ds
-        .execute("SELECT work=work_id FROM time", ses, None, false)
+        .execute(ass.as_str(), ses, None, false)
         .await else {
             return Err(ReadWorkDataError {});
         };
