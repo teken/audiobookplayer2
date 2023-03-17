@@ -1,8 +1,11 @@
+use lofty::TaggedFileExt;
 use log::{error, info};
+use std::collections::HashMap;
 use std::fs;
+use walkdir::WalkDir;
 
 use crate::types::Work;
-use crate::utils::{create_author, create_work, LIBRARY_LOCATION};
+use crate::utils::{create_author, create_work, AUDIO_FILE_EXTENSIONS, LIBRARY_LOCATION};
 
 #[tauri::command]
 pub async fn scan_folder() {
@@ -76,10 +79,88 @@ pub async fn scan_folder() {
         }
     }
 
-    info!("library scanned ans saved");
+    info!("library scanned and saved");
 }
 
 #[tauri::command]
-pub fn scan_metadata() {
-    // todo: build library by file metadata
+pub async fn scan_metadata() {
+    info!("library scanning");
+    let mut library: HashMap<String, Work> = HashMap::new();
+    let mut authors: HashMap<String, String> = HashMap::new();
+    for entry in WalkDir::new(LIBRARY_LOCATION)
+        .max_depth(4)
+        .into_iter()
+        .filter_map(|e| match e {
+            Ok(dir) => {
+                if dir.path().extension().is_some()
+                    && AUDIO_FILE_EXTENSIONS
+                        .contains(&dir.path().extension().unwrap().to_str().unwrap())
+                {
+                    Some(dir)
+                } else {
+                    None
+                }
+            }
+            Err(..) => None,
+        })
+    {
+        let Ok(meta) = lofty::read_from_path(entry.path()) else {
+            println!("Failed {:?}", entry);
+            continue;
+        };
+
+        let Some(tag) = meta.primary_tag() else {
+            println!("Failed Tag {:?}", entry);
+            continue;
+        };
+
+        let Some(track_author) = tag.get_string(&lofty::ItemKey::TrackArtist) else {
+            println!("Failed Author {:?}", entry);
+            continue;
+        };
+
+        let author_id = if authors.contains_key(track_author) {
+            authors.get(track_author).unwrap().to_owned()
+        } else {
+            let key = create_author(track_author.clone().to_owned())
+                .await
+                .unwrap();
+            authors.insert(track_author.clone().to_owned(), key.clone());
+            key
+        };
+
+        let Some(album_title) = tag
+            .get_string(&lofty::ItemKey::AlbumTitle) else {
+                println!("Failed Album {:?}", entry);
+                continue;
+            };
+
+        let library_key = track_author.to_owned() + album_title;
+
+        let mut work = if library.contains_key(&library_key) {
+            library.remove(&library_key).unwrap()
+        } else {
+            Work {
+                author: author_id,
+                series: None,
+                files: vec![],
+                name: album_title.to_owned(),
+                path: entry.path().to_str().unwrap().to_string(),
+                ..Default::default()
+            }
+        };
+
+        work.files.push(entry.path().to_str().unwrap().to_string());
+
+        library.insert(library_key, work);
+    }
+
+    for work in library.values() {
+        println!("{:?}", work)
+        // if let Err(err) = create_work(work.clone()).await {
+        //     error!("Failed to add work: {err}")
+        // }
+    }
+
+    info!("library scanned and saved");
 }

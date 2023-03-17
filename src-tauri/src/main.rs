@@ -36,23 +36,23 @@ async fn main() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_store::PluginBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
+            book_cmds::clear_book_time,
+            book_cmds::load_book_time,
+            book_cmds::load_work_metadata,
+            book_cmds::load_work,
+            book_cmds::start_book,
+            book_cmds::update_work_time,
+            library_cmds::clear_library,
+            library_cmds::clear_times,
+            library_cmds::library_stats,
             library_cmds::load_library,
-            player_cmds::play,
+            library_cmds::search,
             player_cmds::pause,
+            player_cmds::play,
+            player_cmds::stop,
             scan_cmds::scan_folder,
             scan_cmds::scan_metadata,
-            library_cmds::search,
-            book_cmds::start_book,
-            player_cmds::stop,
-            library_cmds::clear_library,
             close_splashscreen,
-            book_cmds::load_work,
-            library_cmds::library_stats,
-            book_cmds::load_work_metadata,
-            book_cmds::load_book_time,
-            book_cmds::update_work_time,
-            library_cmds::clear_times,
-            book_cmds::clear_book_time
         ])
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();

@@ -16,9 +16,9 @@ use crate::SES;
 use crate::types::{Chapter, ReadFileMetadataError, TrackMetadata, Work};
 
 pub const LIBRARY_LOCATION: &str = r"G:\Audio\Spooken Word";
-const AUDIO_FILE_EXTENSIONS: [&str; 5] = ["mp4", "mp3", "m4a", "m4b", "wav"];
-const AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS: [&str; 3] = ["mp4", "m4a", "m4b"];
-const IMAGE_FILE_EXTENSIONS: [&str; 3] = ["jpg", "jpeg", "png"];
+pub const AUDIO_FILE_EXTENSIONS: [&str; 5] = ["mp4", "mp3", "m4a", "m4b", "wav"];
+pub const AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS: [&str; 3] = ["mp4", "m4a", "m4b"];
+pub const IMAGE_FILE_EXTENSIONS: [&str; 3] = ["jpg", "jpeg", "png"];
 
 pub fn object_into_work(object: Object) -> Work {
     let series_str = object.get("series").map(|x| x.clone().as_string()).unwrap();

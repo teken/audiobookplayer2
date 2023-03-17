@@ -33,6 +33,7 @@ log = "0.4.17"
 dotenv = "0.15.0"
 lazy_static = "1.4.0"
 async_once = "0.2.6"
+walkdir = "2.3.3"
 
 
 [features]

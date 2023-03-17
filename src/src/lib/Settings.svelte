@@ -21,13 +21,20 @@
             store.save();
         });
     };
+
+    const invoke_cmd = async (cmd: string) => {
+        invoke(cmd)
+            .then(() => alert("Done"))
+            .catch((e) => alert(e));
+    };
 </script>
 
 <div>
     Libaray Actions:
-    <button on:click={() => invoke("scan")}>Scan</button>
-    <button on:click={() => invoke("clear_library")}>Clear Library</button>
-    <button on:click={() => invoke("clear_times")}>Clear Times</button>
+    <button on:click={() => invoke_cmd("scan_folder")}>Scan Folder</button>
+    <button on:click={() => invoke_cmd("scan_metadata")}>Scan Metadata</button>
+    <button on:click={() => invoke_cmd("clear_library")}>Clear Library</button>
+    <button on:click={() => invoke_cmd("clear_times")}>Clear Times</button>
 </div>
 <form>
     <label for="libraryLocation">Library Location</label>
