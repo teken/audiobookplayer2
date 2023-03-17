@@ -23,12 +23,14 @@
 {:then book}
   {#if book}
     <div class="container">
-      <img
-        class="item-image"
-        src={tauri.convertFileSrc(book.image_files[0])}
-        alt="cover"
-        loading="lazy"
-      />
+      {#if book.image_files.length > 0}
+        <img
+          class="item-image"
+          src={tauri.convertFileSrc(book.image_files[0])}
+          alt="cover"
+          loading="lazy"
+        />
+      {/if}
       <div>
         Title: {book.name} <br />
         Author: {book.author} <br />

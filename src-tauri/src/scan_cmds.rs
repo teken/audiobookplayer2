@@ -75,7 +75,7 @@ pub async fn scan_folder() {
 
     for work in library {
         if let Err(err) = create_work(work).await {
-            error!("Failed to add work: {err}")
+            error!("Failed to add work: {}", err);
         }
     }
 
@@ -83,12 +83,16 @@ pub async fn scan_folder() {
 }
 
 #[tauri::command]
-pub async fn scan_metadata() {
+pub async fn scan_metadata(window: tauri::Window) {
+
     info!("library scanning");
     let mut library: HashMap<String, Work> = HashMap::new();
     let mut authors: HashMap<String, String> = HashMap::new();
-    for entry in WalkDir::new(LIBRARY_LOCATION)
-        .max_depth(4)
+
+    window.emit("scan_metadata_finding_files", 0);
+
+    let files = WalkDir::new(LIBRARY_LOCATION)
+        .max_depth(3)
         .into_iter()
         .filter_map(|e| match e {
             Ok(dir) => {
@@ -102,20 +106,26 @@ pub async fn scan_metadata() {
                 }
             }
             Err(..) => None,
-        })
-    {
+        }).collect::<Vec<_>>();
+
+    window.emit("scan_metadata_files_found", files.len());
+
+    for entry in files {
         let Ok(meta) = lofty::read_from_path(entry.path()) else {
-            println!("Failed {:?}", entry);
+            error!("Failed {:?}", entry);
+            window.emit("scan_metadata_file_failed_read", entry.path());
             continue;
         };
 
         let Some(tag) = meta.primary_tag() else {
-            println!("Failed Tag {:?}", entry);
+            error!("Failed Tag {:?}", entry);
+            window.emit("scan_metadata_file_failed_tag_read", entry.path());
             continue;
         };
 
         let Some(track_author) = tag.get_string(&lofty::ItemKey::TrackArtist) else {
-            println!("Failed Author {:?}", entry);
+            error!("Failed Author {:?}", entry);
+            window.emit("scan_metadata_file_failed_author_read", entry.path());
             continue;
         };
 
@@ -131,7 +141,8 @@ pub async fn scan_metadata() {
 
         let Some(album_title) = tag
             .get_string(&lofty::ItemKey::AlbumTitle) else {
-                println!("Failed Album {:?}", entry);
+                error!("Failed Album {:?}", entry);
+                window.emit("scan_metadata_file_failed_album_read", entry.path());
                 continue;
             };
 
@@ -152,15 +163,20 @@ pub async fn scan_metadata() {
 
         work.files.push(entry.path().to_str().unwrap().to_string());
 
-        library.insert(library_key, work);
+        library.insert(library_key.clone(), work);
+
+        window.emit("scan_metadata_file_complete", 0);
     }
 
+
+
     for work in library.values() {
-        println!("{:?}", work)
-        // if let Err(err) = create_work(work.clone()).await {
-        //     error!("Failed to add work: {err}")
-        // }
+        if let Err(err) = create_work(work.clone()).await {
+            error!("Failed to add work: {}", err);
+        }
     }
+
+    window.emit("scan_metadata_complete", 0);
 
     info!("library scanned and saved");
 }
