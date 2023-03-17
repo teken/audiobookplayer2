@@ -19,6 +19,7 @@
     import { secondsToFormatted } from "../util";
     import { PlayerState, type TrackMetadata } from "../audioplayer";
     import Loading from "./Loading.svelte";
+    import type { Book } from "../types";
 
     let playerState = new PlayerState();
     playerStateStore.subscribe((x) => {
@@ -69,8 +70,9 @@
 
     onMount(async () => {
         unlisteners = [
-            await listen<string[]>("work_loaded", () => {
+            await listen<Book>("work_loaded", (event) => {
                 playerStateStore.update((old) => {
+                    old.workId = event.payload.id;
                     old.ready = true;
                     return old;
                 });

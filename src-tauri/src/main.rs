@@ -35,7 +35,8 @@ struct AppState {
 
 lazy_static! {
     static ref DB: AsyncOnce<Datastore> = AsyncOnce::new(async {
-        Datastore::new("file://../data.db")
+        let db_path = std::env::var("SURREAL_PATH").unwrap_or("file://../data.db".to_owned());
+        Datastore::new(db_path.as_str())
             .await
             .expect("failed to open db")
     });
@@ -59,13 +60,14 @@ async fn main() {
             search,
             start_book,
             stop,
-            clear,
+            clear_library,
             close_splashscreen,
             load_work,
             library_stats,
             load_work_metadata,
             load_book_time,
-            update_work_time
+            update_work_time,
+            clear_times
         ])
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();
@@ -94,44 +96,27 @@ async fn main() {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct FailedToOpenDb;
-
-// async fn get_db() -> Result<(Datastore, Session), FailedToOpenDb> {
-//     let db_path = std::env::var("SURREAL_PATH").unwrap_or("file://../data.db".to_owned());
-//     let store = Datastore::new(db_path.as_str()).await;
-//     Ok((store.unwrap(), Session::for_db("abp", "local")))
-// }
-
-#[derive(Debug, Serialize, Deserialize)]
-struct AddWorkTimeError;
-
-#[tauri::command]
-async fn update_work_time(work_id: String, position: f64) -> Result<(), AddWorkTimeError> {
-    let ass = format!(
-        "CREATE times CONTENT {{ work: {}, duration: $duration }}",
-        work_id
-    );
-    let data: BTreeMap<String, Value> = BTreeMap::from([("duration".into(), position.into())]);
-    match DB
-        .get()
-        .await
-        .execute(ass.as_str(), &SES, Some(data), false)
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(_) => Err(AddWorkTimeError),
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 struct ClearDatabaseError;
 
 #[tauri::command]
-async fn clear() -> Result<(), ClearDatabaseError> {
+async fn clear_library() -> Result<(), ClearDatabaseError> {
     match DB
         .get()
         .await
         .execute("REMOVE TABLE works", &SES, None, false)
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(_) => Err(ClearDatabaseError),
+    }
+}
+
+#[tauri::command]
+async fn clear_times() -> Result<(), ClearDatabaseError> {
+    match DB
+        .get()
+        .await
+        .execute("REMOVE TABLE times", &SES, None, false)
         .await
     {
         Ok(_) => Ok(()),
@@ -238,9 +223,7 @@ async fn search(search: String) -> Vec<Work> {
 async fn start_book(app_handle: tauri::AppHandle, work_id: String) {
     let work = load_work(work_id).await.unwrap();
 
-    app_handle
-        .emit_all("work_loaded", work.clone().audio_files)
-        .unwrap();
+    app_handle.emit_all("work_loaded", work.clone()).unwrap();
 
     let files: Vec<TrackMetadata> = work
         .audio_files
@@ -595,7 +578,7 @@ struct ReadWorkDataError {}
 
 #[tauri::command]
 async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
-    let ass = format!("SELECT work={work_id} FROM time");
+    let ass = format!("SELECT position FROM times WHERE work={}", work_id);
     let Ok(result) = DB.get().await
         .execute(ass.as_str(), &SES, None, false)
         .await else {
@@ -606,13 +589,39 @@ async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
         return Err(ReadWorkDataError {});
     };
 
-    let Some(Ok(obj)) = objects.next() else {
+    let Some(Ok(obj)) = objects.last() else {
+        error!("No object found");
         return Err(ReadWorkDataError {});
     };
 
     let dur = obj
-        .get("duration")
+        .get("position")
         .map(|x| x.clone().as_float())
         .unwrap_or_default();
+
     Ok(dur)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AddWorkTimeError;
+
+#[tauri::command]
+async fn update_work_time(work_id: String, position: f64) -> Result<(), AddWorkTimeError> {
+    // todo: fix times not updating on duplicate keys
+    let ass = format!(
+        "INSERT INTO times (work, position) VALUES ({},{}) ON DUPLICATE KEY UPDATE position={};",
+        work_id, position, position
+    );
+    match DB
+        .get()
+        .await
+        .execute(ass.as_str(), &SES, None, false)
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            error!("{:?}", err);
+            Err(AddWorkTimeError)
+        }
+    }
 }

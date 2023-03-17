@@ -88,6 +88,7 @@ export class PlayerState {
     filePosition: number = 0;
     fileIndexPosition: number = 0;
     fileMetadata: TrackMetadata[] = [];
+    workId: string;
 
     get chapters(): Chapter[] {
         return this.fileMetadata.reduce((a, v) => a.concat(v.chapters ?? []), []);
@@ -176,8 +177,8 @@ export class PlayerState {
 
     constructor() {
         setInterval(() => {
-            if (this.ready && this.playing) {
-                invoke("update_work_time", { workId: '', position: this.position });
+            if (this.workId && this.ready && this.playing) {
+                invoke("update_work_time", { workId: this.workId, position: this.position }).catch(console.error);
             }
         }, 5000);
     }

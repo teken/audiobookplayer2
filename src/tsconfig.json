@@ -16,7 +16,8 @@
     "isolatedModules": true,
     "types": [
       "vite-plugin-pwa/client"
-    ]
+    ],
+    "sourceMap": true,
   },
   "include": [
     "src/**/*.d.ts",

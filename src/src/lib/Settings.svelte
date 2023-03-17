@@ -26,7 +26,8 @@
 <div>
     Libaray Actions:
     <button on:click={() => invoke("scan")}>Scan</button>
-    <button on:click={() => invoke("clear")}>Clear</button>
+    <button on:click={() => invoke("clear_library")}>Clear Library</button>
+    <button on:click={() => invoke("clear_times")}>Clear Times</button>
 </div>
 <form>
     <label for="libraryLocation">Library Location</label>

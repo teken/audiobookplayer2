@@ -2,6 +2,7 @@
     import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
     import { onDestroy, onMount } from "svelte";
     import { AudioPlayer } from "../audioplayer";
+    import type { Book } from "../types";
 
     let unlisteners: UnlistenFn[] = [];
 
@@ -15,8 +16,8 @@
         const player = new AudioPlayer();
 
         unlisteners = [
-            await listen<string[]>("work_loaded", ({ payload }) => {
-                player.load(payload);
+            await listen<Book>("work_loaded", ({ payload }) => {
+                player.load(payload.audio_files);
             }),
 
             await listen("play", () => player.play()),

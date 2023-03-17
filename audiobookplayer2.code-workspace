@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "Svelte",
+			"path": "./src"
+		},
+		{
+			"name": "Tauri",
+			"path": "./src-tauri"
+		},
+		{
+			"name": "Root",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
