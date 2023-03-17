@@ -29,10 +29,6 @@ const AUDIO_FILE_EXTENSIONS: [&str; 5] = ["mp4", "mp3", "m4a", "m4b", "wav"];
 const AUDIO_FILE_WITH_CHAPTERS_EXTENSIONS: [&str; 3] = ["mp4", "m4a", "m4b"];
 const IMAGE_FILE_EXTENSIONS: [&str; 3] = ["jpg", "jpeg", "png"];
 
-struct AppState {
-    settings: Store,
-}
-
 lazy_static! {
     static ref DB: AsyncOnce<Datastore> = AsyncOnce::new(async {
         let db_path = std::env::var("SURREAL_PATH").unwrap_or("file://../data.db".to_owned());
@@ -67,7 +63,8 @@ async fn main() {
             load_work_metadata,
             load_book_time,
             update_work_time,
-            clear_times
+            clear_times,
+            clear_book_time
         ])
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();
@@ -77,7 +74,6 @@ async fn main() {
             set_shadow(&splashscreen, true).expect("Unsupported platform!");
 
             let background_player = app.get_window("background-player").unwrap();
-            // background_player.show().unwrap();
 
             let i = app.app_handle();
             main_window.on_window_event(move |event| {
@@ -577,7 +573,7 @@ struct Chapter {
 struct ReadWorkDataError {}
 
 #[tauri::command]
-async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
+async fn load_book_time(work_id: String) -> Result<Option<f64>, ReadWorkDataError> {
     let ass = format!("SELECT position FROM times WHERE work={}", work_id);
     let Ok(result) = DB.get().await
         .execute(ass.as_str(), &SES, None, false)
@@ -585,13 +581,12 @@ async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
             return Err(ReadWorkDataError {});
         };
 
-    let Ok(mut objects) = into_iter_objects(result) else {
+    let Ok(objects) = into_iter_objects(result) else {
         return Err(ReadWorkDataError {});
     };
 
     let Some(Ok(obj)) = objects.last() else {
-        error!("No object found");
-        return Err(ReadWorkDataError {});
+        return Ok(None);
     };
 
     let dur = obj
@@ -599,7 +594,7 @@ async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
         .map(|x| x.clone().as_float())
         .unwrap_or_default();
 
-    Ok(dur)
+    Ok(Some(dur))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -622,6 +617,23 @@ async fn update_work_time(work_id: String, position: f64) -> Result<(), AddWorkT
         Err(err) => {
             error!("{:?}", err);
             Err(AddWorkTimeError)
+        }
+    }
+}
+
+#[tauri::command]
+async fn clear_book_time(work_id: String) -> Result<(), String> {
+    let ass = format!("DELETE times WHERE work={}", work_id);
+    match DB
+        .get()
+        .await
+        .execute(ass.as_str(), &SES, None, false)
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            error!("{:?}", err);
+            Err("failed to clear book time".into())
         }
     }
 }
