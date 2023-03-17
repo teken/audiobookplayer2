@@ -4,7 +4,9 @@
 )]
 
 use anyhow::anyhow;
+use async_once::AsyncOnce;
 use dotenv::dotenv;
+use lazy_static::lazy_static;
 use lofty::TaggedFileExt;
 use lofty::{read_from_path, AudioFile};
 use log::{error, info};
@@ -18,7 +20,7 @@ use surrealdb::{
     sql::{Object, Value},
     Datastore, Response, Session,
 };
-use tauri::Manager;
+use tauri::{Manager, State};
 use tauri_plugin_store::{Store, StoreBuilder};
 use window_shadows::set_shadow;
 
@@ -31,18 +33,23 @@ struct AppState {
     settings: Store,
 }
 
-fn main() {
+lazy_static! {
+    static ref DB: AsyncOnce<Datastore> = AsyncOnce::new(async {
+        Datastore::new("file://../data.db")
+            .await
+            .expect("failed to open db")
+    });
+    static ref SES: Session = Session::for_db("abp", "local");
+}
+
+#[tokio::main]
+async fn main() {
     dotenv().ok();
     env_logger::init();
-
-    let settings = StoreBuilder::new("./settings".parse().unwrap())
-        .default("the-key".to_string(), "wooooot".into())
-        .build();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_store::PluginBuilder::default().build())
-        .manage(AppState { settings })
         .invoke_handler(tauri::generate_handler![
             load_library,
             play,
@@ -89,27 +96,28 @@ fn main() {
 #[derive(Debug, Serialize, Deserialize)]
 struct FailedToOpenDb;
 
-async fn get_db() -> Result<(Datastore, Session), FailedToOpenDb> {
-    let db_path = std::env::var("SURREAL_PATH").unwrap_or("file://../data.db".to_owned());
-    let Ok(store) = Datastore::new(db_path.as_str()).await else {
-        return Err(FailedToOpenDb)
-    };
-    Ok((store, Session::for_db("abp", "local")))
-}
+// async fn get_db() -> Result<(Datastore, Session), FailedToOpenDb> {
+//     let db_path = std::env::var("SURREAL_PATH").unwrap_or("file://../data.db".to_owned());
+//     let store = Datastore::new(db_path.as_str()).await;
+//     Ok((store.unwrap(), Session::for_db("abp", "local")))
+// }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AddWorkTimeError;
 
 #[tauri::command]
 async fn update_work_time(work_id: String, position: f64) -> Result<(), AddWorkTimeError> {
-    let (ds, ses) = &get_db().await.expect("failed to open db");
-
     let ass = format!(
         "CREATE times CONTENT {{ work: {}, duration: $duration }}",
         work_id
     );
     let data: BTreeMap<String, Value> = BTreeMap::from([("duration".into(), position.into())]);
-    match ds.execute(ass.as_str(), ses, Some(data), false).await {
+    match DB
+        .get()
+        .await
+        .execute(ass.as_str(), &SES, Some(data), false)
+        .await
+    {
         Ok(_) => Ok(()),
         Err(_) => Err(AddWorkTimeError),
     }
@@ -120,8 +128,12 @@ struct ClearDatabaseError;
 
 #[tauri::command]
 async fn clear() -> Result<(), ClearDatabaseError> {
-    let (ds, ses) = &get_db().await.expect("failed to open db");
-    match ds.execute("REMOVE TABLE works", ses, None, false).await {
+    match DB
+        .get()
+        .await
+        .execute("REMOVE TABLE works", &SES, None, false)
+        .await
+    {
         Ok(_) => Ok(()),
         Err(_) => Err(ClearDatabaseError),
     }
@@ -132,10 +144,8 @@ struct LoadWorksError;
 
 #[tauri::command]
 async fn load_library() -> Result<Vec<Work>, LoadWorksError> {
-    let (ds, ses) = &get_db().await.expect("failed to open db");
-
-    let Ok(result) = ds
-        .execute("SELECT * FROM works FETCH author", ses, None, false)
+    let Ok(result) = DB.get().await
+        .execute("SELECT * FROM works FETCH author", &SES, None, false)
         .await else {
             return Err(LoadWorksError);
         };
@@ -204,14 +214,17 @@ fn into_iter_objects(
 
 #[tauri::command]
 async fn search(search: String) -> Vec<Work> {
-    let (ds, ses) = &get_db().await.expect("failed to open db");
-
     let ass = format!(
         "SELECT * FROM works WHERE \
             string::lowercase(name) CONTAINS string::lowercase('{search}') \
             FETCH author"
     ); // string::lowercase(author->name) CONTAINS string::lowercase('{search}') \ COALESCE(string::lowercase(series),'') CONTAINS string::lowercase('{search}') \
-    let result = ds.execute(ass.as_str(), ses, None, false).await.unwrap();
+    let result = DB
+        .get()
+        .await
+        .execute(ass.as_str(), &SES, None, false)
+        .await
+        .unwrap();
 
     let objects = into_iter_objects(result).unwrap();
 
@@ -281,8 +294,6 @@ fn get_files_by_extension(files: Vec<String>, extenions: Vec<&str>) -> Vec<Strin
 
 #[tauri::command]
 async fn scan_folder() {
-    let (ds, ses) = &get_db().await.expect("failed to open db");
-
     info!("library scanning");
     let mut library: Vec<Work> = vec![];
     let authors = fs::read_dir(LIBRARY_LOCATION);
@@ -295,7 +306,7 @@ async fn scan_folder() {
             let works = fs::read_dir(apath).unwrap();
             let author_name = au.file_name().into_string().unwrap();
 
-            let author_id = create_author(ds, ses, author_name).await.unwrap();
+            let author_id = create_author(author_name).await.unwrap();
 
             for work in works {
                 let wu = work.unwrap();
@@ -348,7 +359,7 @@ async fn scan_folder() {
     }
 
     for work in library {
-        if let Err(err) = create_work(ds, ses, work).await {
+        if let Err(err) = create_work(work).await {
             error!("Failed to add work: {err}")
         }
     }
@@ -368,7 +379,7 @@ fn string_to_id(item: String) -> String {
         .to_string()
 }
 
-async fn create_work(ds: &Datastore, ses: &Session, work: Work) -> anyhow::Result<()> {
+async fn create_work(work: Work) -> anyhow::Result<()> {
     let ass = format!("CREATE works CONTENT {{ name: $name, author: authors:{}, series: $series, path: $path, files:$files, }}", work.author);
     let data: BTreeMap<String, Value> = BTreeMap::from([
         ("name".into(), work.name.into()),
@@ -390,17 +401,18 @@ async fn create_work(ds: &Datastore, ses: &Session, work: Work) -> anyhow::Resul
                 .into(),
         ),
     ]);
-    match ds.execute(ass.as_str(), ses, Some(data), false).await {
+    match DB
+        .get()
+        .await
+        .execute(ass.as_str(), &SES, Some(data), false)
+        .await
+    {
         Ok(_) => anyhow::Ok(()),
         Err(err) => Err(anyhow!("failed to create work: {}", err)),
     }
 }
 
-async fn create_author(
-    ds: &Datastore,
-    ses: &Session,
-    author_name: String,
-) -> anyhow::Result<String> {
+async fn create_author(author_name: String) -> anyhow::Result<String> {
     let author_id = string_to_id(author_name.clone());
     let ass = format!(
         "CREATE authors:{} CONTENT {{ name: $name }}",
@@ -408,7 +420,12 @@ async fn create_author(
     );
     let data: BTreeMap<String, Value> =
         BTreeMap::from([("name".into(), author_name.replace('\'', r"\'").into())]);
-    match ds.execute(ass.as_str(), ses, Some(data), false).await {
+    match DB
+        .get()
+        .await
+        .execute(ass.as_str(), &SES, Some(data), false)
+        .await
+    {
         Ok(_) => anyhow::Ok(author_id),
         Err(err) => Err(anyhow!("failed to create work: {}", err)),
     }
@@ -424,7 +441,7 @@ async fn library_stats() {
     //         (SELECT count(string::length(series) == 0) FROM works) as booksNotInSeries, \
     //     "
     // ); // string::lowercase(author->name) CONTAINS string::lowercase('{search}') \ COALESCE(string::lowercase(series),'') CONTAINS string::lowercase('{search}') \
-    // let result = ds.execute(ass.as_str(), ses, None, false).await.unwrap();
+    // let result = DB.get().await.execute(ass.as_str(), ses, None, false).await.unwrap();
 
     // let objects = into_iter_objects(result).unwrap();
     // todo: enable stats for about page
@@ -446,10 +463,8 @@ async fn close_splashscreen(window: tauri::Window) {
 
 #[tauri::command]
 async fn load_work(work_id: String) -> Result<Work, LoadWorksError> {
-    let (ds, ses) = &get_db().await.expect("failed to open db");
-
     let ass = format!("SELECT * FROM {work_id} FETCH author");
-    let Ok(result) = ds.execute(ass.as_str(), ses, None, false).await else {
+    let Ok(result) = DB.get().await.execute(ass.as_str(), &SES, None, false).await else {
         return Err(LoadWorksError);
     };
 
@@ -580,10 +595,9 @@ struct ReadWorkDataError {}
 
 #[tauri::command]
 async fn load_book_time(work_id: String) -> Result<f64, ReadWorkDataError> {
-    let (ds, ses) = &get_db().await.expect("failed to open db");
     let ass = format!("SELECT work={work_id} FROM time");
-    let Ok(result) = ds
-        .execute(ass.as_str(), ses, None, false)
+    let Ok(result) = DB.get().await
+        .execute(ass.as_str(), &SES, None, false)
         .await else {
             return Err(ReadWorkDataError {});
         };

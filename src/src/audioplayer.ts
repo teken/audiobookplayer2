@@ -179,7 +179,7 @@ export class PlayerState {
             if (this.ready && this.playing) {
                 invoke("update_work_time", { workId: '', position: this.position });
             }
-        }, 1000);
+        }, 5000);
     }
 }
 
