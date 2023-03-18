@@ -5,7 +5,7 @@
     import ImportProgressModal from "./ImportProgressModal.svelte";
 
     const store = new Store("settings.abp");
-    let displayModal = true;
+    let displayModal = false;
 
     let libraryPath = "";
     store.get("libraryPath").then((v: string) => {
@@ -26,15 +26,19 @@
 
     const invoke_cmd = async (cmd: string) => {
         invoke(cmd);
-        displayModal = true;
     };
 </script>
 
-<ImportProgressModal show={displayModal}/>
+<ImportProgressModal show={displayModal} />
 <div>
     Libaray Actions:
     <button on:click={() => invoke_cmd("scan_folder")}>Scan Folder</button>
-    <button on:click={() => invoke_cmd("scan_metadata")}>Scan Metadata</button>
+    <button
+        on:click={() => {
+            displayModal = true;
+            invoke_cmd("scan_metadata");
+        }}>Scan Metadata</button
+    >
     <button on:click={() => invoke_cmd("clear_library")}>Clear Library</button>
     <button on:click={() => invoke_cmd("clear_times")}>Clear Times</button>
 </div>

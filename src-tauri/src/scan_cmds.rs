@@ -113,19 +113,19 @@ pub async fn scan_metadata(window: tauri::Window) {
     for entry in files {
         let Ok(meta) = lofty::read_from_path(entry.path()) else {
             error!("Failed {:?}", entry);
-            window.emit("scan_metadata_file_failed_read", entry.path());
+            window.emit("scan_metadata_file_failed_read", entry.path().to_str().unwrap().to_string());
             continue;
         };
 
         let Some(tag) = meta.primary_tag() else {
             error!("Failed Tag {:?}", entry);
-            window.emit("scan_metadata_file_failed_tag_read", entry.path());
+            window.emit("scan_metadata_file_failed_tag_read", entry.path().to_str().unwrap().to_string());
             continue;
         };
 
         let Some(track_author) = tag.get_string(&lofty::ItemKey::TrackArtist) else {
             error!("Failed Author {:?}", entry);
-            window.emit("scan_metadata_file_failed_author_read", entry.path());
+            window.emit("scan_metadata_file_failed_author_read", entry.path().to_str().unwrap().to_string());
             continue;
         };
 
@@ -142,7 +142,7 @@ pub async fn scan_metadata(window: tauri::Window) {
         let Some(album_title) = tag
             .get_string(&lofty::ItemKey::AlbumTitle) else {
                 error!("Failed Album {:?}", entry);
-                window.emit("scan_metadata_file_failed_album_read", entry.path());
+                window.emit("scan_metadata_file_failed_album_read", entry.path().to_str().unwrap().to_string());
                 continue;
             };
 
