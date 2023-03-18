@@ -27,17 +27,20 @@
     const invoke_cmd = async (cmd: string) => {
         invoke(cmd);
     };
+
+    const invoke_modal_cmd = async (cmd: string) => {
+        displayModal = true;
+        invoke(cmd);
+    };
 </script>
 
 <ImportProgressModal show={displayModal} />
-<div>
-    Libaray Actions:
-    <button on:click={() => invoke_cmd("scan_folder")}>Scan Folder</button>
-    <button
-        on:click={() => {
-            displayModal = true;
-            invoke_cmd("scan_metadata");
-        }}>Scan Metadata</button
+<div class="actions">
+    <span>Libaray Actions</span>
+    <button on:click={() => invoke_modal_cmd("scan_folder")}>Scan Folder</button
+    >
+    <button on:click={() => invoke_modal_cmd("scan_metadata")}
+        >Scan Metadata</button
     >
     <button on:click={() => invoke_cmd("clear_library")}>Clear Library</button>
     <button on:click={() => invoke_cmd("clear_times")}>Clear Times</button>
@@ -50,3 +53,15 @@
         on:click={librarySelectFolder}
     />
 </form>
+
+<style>
+    .actions button {
+        background-color: var(--color4);
+        color: var(--color1);
+        border-radius: 8px;
+        border: 1px solid transparent;
+        padding: 0.6em 1.2em;
+        font-size: 1em;
+        cursor: pointer;
+    }
+</style>

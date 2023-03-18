@@ -42,28 +42,24 @@
         ({ payload }) => (filesToScan = payload as number)
       ),
       await listen("scan_metadata_file_failed_read", ({ payload }) => {
-        console.log("scan_metadata_file_failed_read", payload);
         filesFailedPath.fileRead = [
           ...filesFailedPath.fileRead,
           payload as string,
         ];
       }),
       await listen("scan_metadata_file_failed_tag_read", ({ payload }) => {
-        console.log("scan_metadata_file_failed_tag_read", payload);
         filesFailedPath.tagRead = [
           ...filesFailedPath.tagRead,
           payload as string,
         ];
       }),
       await listen("scan_metadata_file_failed_author_read", ({ payload }) => {
-        console.log("scan_metadata_file_failed_author_read", payload);
         filesFailedPath.authorRead = [
           ...filesFailedPath.authorRead,
           payload as string,
         ];
       }),
       await listen("scan_metadata_file_failed_album_read", ({ payload }) => {
-        console.log("scan_metadata_file_failed_album_read", payload);
         filesFailedPath.albumRead = [
           ...filesFailedPath.albumRead,
           payload as string,
