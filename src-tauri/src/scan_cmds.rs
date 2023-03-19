@@ -1,10 +1,13 @@
 use lofty::TaggedFileExt;
-use log::{error, info};
+use log::{debug, error, info};
+use regex::Regex;
 use std::collections::HashMap;
-use std::fs;
+use std::ffi::OsStr;
+use std::fs::{self, File};
+use std::io::Write;
 use walkdir::WalkDir;
 
-use crate::types::Work;
+use crate::types::{MetadataTemplate, Work};
 use crate::utils::{create_author, create_work, AUDIO_FILE_EXTENSIONS, LIBRARY_LOCATION};
 
 #[tauri::command]
@@ -83,8 +86,27 @@ pub async fn scan_folder() {
 }
 
 #[tauri::command]
-pub async fn scan_metadata(window: tauri::Window) {
+pub async fn scan_metadata(app_handle: tauri::AppHandle, window: tauri::Window) {
+    scan_metadata_with_template(MetadataTemplate::default(), app_handle, window).await;
+}
 
+fn get_tag_with_fallback<'a>(
+    tag: &'a lofty::Tag,
+    keys: &'a Vec<lofty::ItemKey>,
+) -> Option<&'a str> {
+    for key in keys {
+        if let Some(value) = tag.get_string(key) {
+            return Some(value);
+        }
+    }
+    None
+}
+
+async fn scan_metadata_with_template(
+    template: MetadataTemplate,
+    app_handle: tauri::AppHandle,
+    window: tauri::Window,
+) {
     info!("library scanning");
     let mut library: HashMap<String, Work> = HashMap::new();
     let mut authors: HashMap<String, String> = HashMap::new();
@@ -106,25 +128,26 @@ pub async fn scan_metadata(window: tauri::Window) {
                 }
             }
             Err(..) => None,
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     window.emit("scan_metadata_files_found", files.len());
 
     for entry in files {
         let Ok(meta) = lofty::read_from_path(entry.path()) else {
-            error!("Failed {:?}", entry);
+            debug!("Failed Read {:?}", entry);
             window.emit("scan_metadata_file_failed_read", entry.path().to_str().unwrap().to_string());
             continue;
         };
 
         let Some(tag) = meta.primary_tag() else {
-            error!("Failed Tag {:?}", entry);
+            debug!("Failed Read Tag {:?}", entry);
             window.emit("scan_metadata_file_failed_tag_read", entry.path().to_str().unwrap().to_string());
             continue;
         };
 
-        let Some(track_author) = tag.get_string(&lofty::ItemKey::TrackArtist) else {
-            error!("Failed Author {:?}", entry);
+        let Some(track_author) = get_tag_with_fallback(tag, &template.author) else {
+            debug!("Failed Read Author {:?}", entry);
             window.emit("scan_metadata_file_failed_author_read", entry.path().to_str().unwrap().to_string());
             continue;
         };
@@ -139,9 +162,8 @@ pub async fn scan_metadata(window: tauri::Window) {
             key
         };
 
-        let Some(album_title) = tag
-            .get_string(&lofty::ItemKey::AlbumTitle) else {
-                error!("Failed Album {:?}", entry);
+        let Some(album_title) = get_tag_with_fallback(tag, &template.title) else {
+                debug!("Failed Read Album {:?}", entry);
                 window.emit("scan_metadata_file_failed_album_read", entry.path().to_str().unwrap().to_string());
                 continue;
             };
@@ -156,19 +178,70 @@ pub async fn scan_metadata(window: tauri::Window) {
                 series: None,
                 files: vec![],
                 name: album_title.to_owned(),
-                path: entry.path().to_str().unwrap().to_string(),
+                path: entry.path().parent().unwrap().to_str().unwrap().to_string(),
                 ..Default::default()
             }
         };
 
-        work.files.push(entry.path().to_str().unwrap().to_string());
+        if work.image_files.is_empty() {
+            let mut cover_pics = tag
+                .pictures()
+                .iter()
+                .filter(|pic| pic.pic_type() == lofty::PictureType::CoverFront);
+            if cover_pics.clone().count() > 0 {
+                let cover_pic = cover_pics.next().unwrap();
+                let extension = match cover_pic.mime_type().as_str() {
+                    "image/jpeg" => "jpg",
+                    "image/png" => "png",
+                    "image/gif" => "gif",
+                    "image/bmp" => "bmp",
+                    e => {
+                        error!("missing file type support: {}", e);
+                        "jpg"
+                    }
+                };
+                let cover_path = app_handle
+                    .path_resolver()
+                    .app_cache_dir()
+                    .unwrap()
+                    .clone()
+                    .join("cache_covers")
+                    .join(format!(
+                        "{}.{}",
+                        regex::Regex::new(r"[^A-Za-z0-9 ]")
+                            .unwrap()
+                            .replace_all(album_title, ""),
+                        extension
+                    ));
+
+                if cover_path.exists() {
+                    work.files.push(cover_path.to_str().unwrap().into());
+                    work.image_files.push(cover_path.to_str().unwrap().into());
+                } else {
+                    if !cover_path.parent().unwrap().exists() {
+                        fs::create_dir_all(cover_path.parent().unwrap()).unwrap();
+                    }
+                    match File::create(&cover_path) {
+                        Ok(mut cover_file) => {
+                            cover_file.write_all(cover_pic.data()).unwrap();
+                            work.files.push(cover_path.to_str().unwrap().into());
+                            work.image_files.push(cover_path.to_str().unwrap().into());
+                        }
+                        Err(err) => {
+                            error!("Failed to create cover file: {:?}: {:?}", cover_path, err)
+                        }
+                    }
+                }
+            }
+        }
+
+        work.audio_files
+            .push(entry.path().to_str().unwrap().to_string());
 
         library.insert(library_key.clone(), work);
 
         window.emit("scan_metadata_file_complete", 0);
     }
-
-
 
     for work in library.values() {
         if let Err(err) = create_work(work.clone()).await {

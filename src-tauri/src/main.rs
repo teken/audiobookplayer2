@@ -14,6 +14,7 @@ mod book_cmds;
 mod library_cmds;
 mod player_cmds;
 mod scan_cmds;
+mod settings_cmds;
 mod types;
 mod utils;
 
@@ -52,6 +53,8 @@ async fn main() {
             player_cmds::stop,
             scan_cmds::scan_folder,
             scan_cmds::scan_metadata,
+            settings_cmds::load_settings,
+            settings_cmds::save_settings,
             close_splashscreen,
         ])
         .setup(|app| {
@@ -62,6 +65,9 @@ async fn main() {
             set_shadow(&splashscreen, true).expect("Unsupported platform!");
 
             let background_player = app.get_window("background-player").unwrap();
+            background_player
+                .hide()
+                .expect("Failed to hide background_player");
 
             let i = app.app_handle();
             main_window.on_window_event(move |event| {

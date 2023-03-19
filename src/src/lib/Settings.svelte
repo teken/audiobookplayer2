@@ -2,7 +2,10 @@
     import { invoke } from "@tauri-apps/api";
     import { Store } from "tauri-plugin-store-api";
     import { open } from "@tauri-apps/api/dialog";
+    import MultiSelect from "svelte-multiselect";
+
     import ImportProgressModal from "./ImportProgressModal.svelte";
+    import { PossibleTags } from "../types";
 
     const store = new Store("settings.abp");
     let displayModal = false;
@@ -32,11 +35,14 @@
         displayModal = true;
         invoke(cmd);
     };
+
+    let selectedAuthorTags = [];
+    let selectedBookTags = [];
 </script>
 
 <ImportProgressModal show={displayModal} />
-<div class="actions">
-    <span>Libaray Actions</span>
+<fieldset class="actions">
+    <legend>Libaray Actions</legend>
     <button on:click={() => invoke_modal_cmd("scan_folder")}>Scan Folder</button
     >
     <button on:click={() => invoke_modal_cmd("scan_metadata")}
@@ -44,7 +50,7 @@
     >
     <button on:click={() => invoke_cmd("clear_library")}>Clear Library</button>
     <button on:click={() => invoke_cmd("clear_times")}>Clear Times</button>
-</div>
+</fieldset>
 <form>
     <label for="libraryLocation">Library Location</label>
     <input
@@ -52,6 +58,21 @@
         value={libraryPath}
         on:click={librarySelectFolder}
     />
+    <fieldset>
+        <legend>Metadata Scan Settings</legend>
+        <label for="authorTagSelect">Possible Author Tags</label>
+        <MultiSelect
+            id="authorTagSelect"
+            bind:selectedAuthorTags
+            options={PossibleTags}
+        />
+        <label for="bookTagSelect">Possible Book Tags</label>
+        <MultiSelect
+            id="bookTagSelect"
+            bind:selectedBookTags
+            options={PossibleTags}
+        />
+    </fieldset>
 </form>
 
 <style>

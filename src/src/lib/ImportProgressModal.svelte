@@ -1,8 +1,8 @@
 <script lang="ts">
   import Portal from "svelte-portal";
   import { onDestroy, onMount } from "svelte";
-  import { listen, once, type UnlistenFn } from "@tauri-apps/api/event";
-  import { shell } from "@tauri-apps/api";
+  import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+  import ImportProgressModalFileErrorGroup from "./ImportProgressModalFileErrorGroup.svelte";
 
   export let show = false;
 
@@ -46,24 +46,28 @@
           ...filesFailedPath.fileRead,
           payload as string,
         ];
+        filesFailed++;
       }),
       await listen("scan_metadata_file_failed_tag_read", ({ payload }) => {
         filesFailedPath.tagRead = [
           ...filesFailedPath.tagRead,
           payload as string,
         ];
+        filesFailed++;
       }),
       await listen("scan_metadata_file_failed_author_read", ({ payload }) => {
         filesFailedPath.authorRead = [
           ...filesFailedPath.authorRead,
           payload as string,
         ];
+        filesFailed++;
       }),
       await listen("scan_metadata_file_failed_album_read", ({ payload }) => {
         filesFailedPath.albumRead = [
           ...filesFailedPath.albumRead,
           payload as string,
         ];
+        filesFailed++;
       }),
       await listen("scan_metadata_file_complete", () => filesCompleted++),
       await listen("scan_metadata_complete", () => (state = "finished")),
@@ -76,50 +80,35 @@
     <div class="overlay">
       <div class="modal">
         {#if state == "waiting"}
-          waiting
+          waiting fore scan to start
         {:else if state == "started"}
           <progress value={filesCompleted + filesFailed} max={filesToScan}>
-            32%
+            {((filesCompleted + filesFailed) / filesToScan) * 100}%
           </progress>
           <span>{filesCompleted}+{filesFailed}</span><span>/{filesToScan}</span>
         {:else}
-          finished
+          finished scanning, {filesFailed} failed, {filesCompleted} succeeded, {filesToScan}
+          total
           <button on:click={() => (show = false)}>Close modal</button>
         {/if}
 
         <div>
-          {#if filesFailedPath.fileRead.length > 0}
-            <fieldset>
-              <legend>Failed to read file:</legend>
-              {#each filesFailedPath.fileRead as file}
-                <div>{file}</div>
-              {/each}
-            </fieldset>
-          {/if}
-          {#if filesFailedPath.tagRead.length > 0}
-            <fieldset>
-              <legend>Failed to read tags:</legend>
-              {#each filesFailedPath.tagRead as file}
-                <div>{file}</div>
-              {/each}
-            </fieldset>
-          {/if}
-          {#if filesFailedPath.authorRead.length > 0}
-            <fieldset>
-              <legend>Failed to read author tag:</legend>
-              {#each filesFailedPath.authorRead as file}
-                <div>{file}</div>
-              {/each}
-            </fieldset>
-          {/if}
-          {#if filesFailedPath.albumRead.length > 0}
-            <fieldset>
-              <legend>Failed to read album tag:</legend>
-              {#each filesFailedPath.albumRead as file}
-                <div>{file}</div>
-              {/each}
-            </fieldset>
-          {/if}
+          <ImportProgressModalFileErrorGroup
+            legend="Failed to read file"
+            files={filesFailedPath.fileRead}
+          />
+          <ImportProgressModalFileErrorGroup
+            legend="Failed to read tags"
+            files={filesFailedPath.tagRead}
+          />
+          <ImportProgressModalFileErrorGroup
+            legend="Failed to read author tag"
+            files={filesFailedPath.authorRead}
+          />
+          <ImportProgressModalFileErrorGroup
+            legend="Failed to read album tag"
+            files={filesFailedPath.albumRead}
+          />
         </div>
       </div>
     </div>

@@ -44,3 +44,30 @@ pub struct LoadWorksError;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReadFileMetadataError {}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Settings {
+    pub library_location: String,
+    pub library_style: LibraryStyle,
+    // pub metadata_template: MetadataTemplate,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum LibraryStyle {
+    Folder,
+    Metadata,
+}
+
+pub struct MetadataTemplate {
+    pub author: Vec<lofty::ItemKey>,
+    pub title: Vec<lofty::ItemKey>,
+}
+
+impl Default for MetadataTemplate {
+    fn default() -> Self {
+        Self {
+            author: vec![lofty::ItemKey::TrackArtist, lofty::ItemKey::AlbumArtist],
+            title: vec![lofty::ItemKey::AlbumTitle],
+        }
+    }
+}
