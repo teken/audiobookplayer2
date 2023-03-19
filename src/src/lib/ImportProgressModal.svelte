@@ -80,12 +80,18 @@
     <div class="overlay">
       <div class="modal">
         {#if state == "waiting"}
-          waiting fore scan to start
+          waiting for scan to start
         {:else if state == "started"}
-          <progress value={filesCompleted + filesFailed} max={filesToScan}>
-            {((filesCompleted + filesFailed) / filesToScan) * 100}%
-          </progress>
-          <span>{filesCompleted}+{filesFailed}</span><span>/{filesToScan}</span>
+          {#if filesToScan == 0}
+            scanning files...
+          {:else}
+            <progress value={filesCompleted + filesFailed} max={filesToScan}>
+              {((filesCompleted + filesFailed) / filesToScan) * 100}%
+            </progress>
+            <span>{filesCompleted}+{filesFailed}</span><span
+              >/{filesToScan}</span
+            >
+          {/if}
         {:else}
           finished scanning, {filesFailed} failed, {filesCompleted} succeeded, {filesToScan}
           total
