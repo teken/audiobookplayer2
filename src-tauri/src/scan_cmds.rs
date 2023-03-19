@@ -8,7 +8,9 @@ use std::io::Write;
 use walkdir::WalkDir;
 
 use crate::types::{MetadataTemplate, Work};
-use crate::utils::{create_author, create_work, AUDIO_FILE_EXTENSIONS, LIBRARY_LOCATION};
+use crate::utils::{
+    create_author, create_work, AUDIO_FILE_EXTENSIONS, IMAGE_FILE_EXTENSIONS, LIBRARY_LOCATION,
+};
 
 #[tauri::command]
 pub async fn scan_folder() {
@@ -173,10 +175,28 @@ async fn scan_metadata_with_template(
         let mut work = if library.contains_key(&library_key) {
             library.remove(&library_key).unwrap()
         } else {
+            let images = fs::read_dir(entry.path().parent().unwrap())
+                .unwrap()
+                .filter(|file| {
+                    file.as_ref().unwrap().file_type().unwrap().is_file()
+                        && IMAGE_FILE_EXTENSIONS.contains(
+                            &file
+                                .as_ref()
+                                .unwrap()
+                                .path()
+                                .extension()
+                                .unwrap_or_default()
+                                .to_str()
+                                .unwrap(),
+                        )
+                })
+                .map(|file| file.unwrap().path().to_str().unwrap().to_string())
+                .collect::<Vec<_>>();
             Work {
                 author: author_id,
                 series: None,
-                files: vec![],
+                files: images.clone(),
+                image_files: images,
                 name: album_title.to_owned(),
                 path: entry.path().parent().unwrap().to_str().unwrap().to_string(),
                 ..Default::default()
@@ -216,7 +236,6 @@ async fn scan_metadata_with_template(
 
                 if cover_path.exists() {
                     work.files.push(cover_path.to_str().unwrap().into());
-                    work.image_files.push(cover_path.to_str().unwrap().into());
                 } else {
                     if !cover_path.parent().unwrap().exists() {
                         fs::create_dir_all(cover_path.parent().unwrap()).unwrap();
@@ -225,7 +244,6 @@ async fn scan_metadata_with_template(
                         Ok(mut cover_file) => {
                             cover_file.write_all(cover_pic.data()).unwrap();
                             work.files.push(cover_path.to_str().unwrap().into());
-                            work.image_files.push(cover_path.to_str().unwrap().into());
                         }
                         Err(err) => {
                             error!("Failed to create cover file: {:?}: {:?}", cover_path, err)
@@ -235,8 +253,7 @@ async fn scan_metadata_with_template(
             }
         }
 
-        work.audio_files
-            .push(entry.path().to_str().unwrap().to_string());
+        work.files.push(entry.path().to_str().unwrap().to_string());
 
         library.insert(library_key.clone(), work);
 
