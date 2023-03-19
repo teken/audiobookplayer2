@@ -25,7 +25,7 @@
 
   onMount(async () => {
     unlisteners = [
-      await listen("scan_metadata_finding_files", () => {
+      await listen("scan_finding_files", () => {
         state = "started";
         filesToScan = 0;
         filesCompleted = 0;
@@ -70,7 +70,7 @@
         filesFailed++;
       }),
       await listen("scan_metadata_file_complete", () => filesCompleted++),
-      await listen("scan_metadata_complete", () => (state = "finished")),
+      await listen("scan_complete", () => (state = "finished")),
     ];
   });
 </script>

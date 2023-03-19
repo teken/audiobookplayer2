@@ -1,8 +1,6 @@
 use lofty::TaggedFileExt;
 use log::{debug, error, info};
-use regex::Regex;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::Write;
 use walkdir::WalkDir;
@@ -13,9 +11,14 @@ use crate::utils::{
 };
 
 #[tauri::command]
-pub async fn scan_folder() {
+pub async fn scan_folder(window: tauri::Window) {
     info!("library scanning");
     let mut library: Vec<Work> = vec![];
+
+    window
+        .emit("scan_finding_files", 0)
+        .expect("event emit failed");
+
     let authors = fs::read_dir(LIBRARY_LOCATION);
     for author in authors.unwrap() {
         // authors
@@ -84,6 +87,8 @@ pub async fn scan_folder() {
         }
     }
 
+    window.emit("scan_complete", 0).expect("event emit failed");
+
     info!("library scanned and saved");
 }
 
@@ -113,10 +118,12 @@ async fn scan_metadata_with_template(
     let mut library: HashMap<String, Work> = HashMap::new();
     let mut authors: HashMap<String, String> = HashMap::new();
 
-    window.emit("scan_metadata_finding_files", 0);
+    window
+        .emit("scan_finding_files", 0)
+        .expect("event emit failed");
 
     let files = WalkDir::new(LIBRARY_LOCATION)
-        .max_depth(3)
+        .max_depth(4)
         .into_iter()
         .filter_map(|e| match e {
             Ok(dir) => {
@@ -133,24 +140,26 @@ async fn scan_metadata_with_template(
         })
         .collect::<Vec<_>>();
 
-    window.emit("scan_metadata_files_found", files.len());
+    window
+        .emit("scan_metadata_files_found", files.len())
+        .expect("event emit failed");
 
     for entry in files {
         let Ok(meta) = lofty::read_from_path(entry.path()) else {
             debug!("Failed Read {:?}", entry);
-            window.emit("scan_metadata_file_failed_read", entry.path().to_str().unwrap().to_string());
+            window.emit("scan_metadata_file_failed_read", entry.path().to_str().unwrap().to_string()).expect("event emit failed");
             continue;
         };
 
         let Some(tag) = meta.primary_tag() else {
             debug!("Failed Read Tag {:?}", entry);
-            window.emit("scan_metadata_file_failed_tag_read", entry.path().to_str().unwrap().to_string());
+            window.emit("scan_metadata_file_failed_tag_read", entry.path().to_str().unwrap().to_string()).expect("event emit failed");
             continue;
         };
 
         let Some(track_author) = get_tag_with_fallback(tag, &template.author) else {
             debug!("Failed Read Author {:?}", entry);
-            window.emit("scan_metadata_file_failed_author_read", entry.path().to_str().unwrap().to_string());
+            window.emit("scan_metadata_file_failed_author_read", entry.path().to_str().unwrap().to_string()).expect("event emit failed");
             continue;
         };
 
@@ -166,7 +175,7 @@ async fn scan_metadata_with_template(
 
         let Some(album_title) = get_tag_with_fallback(tag, &template.title) else {
                 debug!("Failed Read Album {:?}", entry);
-                window.emit("scan_metadata_file_failed_album_read", entry.path().to_str().unwrap().to_string());
+                window.emit("scan_metadata_file_failed_album_read", entry.path().to_str().unwrap().to_string()).expect("event emit failed");
                 continue;
             };
 
@@ -175,22 +184,21 @@ async fn scan_metadata_with_template(
         let mut work = if library.contains_key(&library_key) {
             library.remove(&library_key).unwrap()
         } else {
-            let images = fs::read_dir(entry.path().parent().unwrap())
-                .unwrap()
-                .filter(|file| {
-                    file.as_ref().unwrap().file_type().unwrap().is_file()
-                        && IMAGE_FILE_EXTENSIONS.contains(
-                            &file
-                                .as_ref()
-                                .unwrap()
-                                .path()
-                                .extension()
-                                .unwrap_or_default()
-                                .to_str()
-                                .unwrap(),
-                        )
+            let images = WalkDir::new(entry.path().parent().unwrap())
+                .into_iter()
+                .filter_map(|e| match e {
+                    Ok(dir) => {
+                        if dir.path().extension().is_some()
+                            && IMAGE_FILE_EXTENSIONS
+                                .contains(&dir.path().extension().unwrap().to_str().unwrap())
+                        {
+                            Some(dir.path().to_str().unwrap().to_string())
+                        } else {
+                            None
+                        }
+                    }
+                    Err(..) => None,
                 })
-                .map(|file| file.unwrap().path().to_str().unwrap().to_string())
                 .collect::<Vec<_>>();
             Work {
                 author: author_id,
@@ -257,7 +265,9 @@ async fn scan_metadata_with_template(
 
         library.insert(library_key.clone(), work);
 
-        window.emit("scan_metadata_file_complete", 0);
+        window
+            .emit("scan_metadata_file_complete", 0)
+            .expect("event emit failed");
     }
 
     for work in library.values() {
@@ -266,7 +276,7 @@ async fn scan_metadata_with_template(
         }
     }
 
-    window.emit("scan_metadata_complete", 0);
+    window.emit("scan_complete", 0).expect("event emit failed");
 
     info!("library scanned and saved");
 }
