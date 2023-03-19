@@ -37,6 +37,16 @@ export class Segment {
     endPosition: number = 1;
 }
 
+export class Settings {
+    libraryLocation: string = "";
+    libraryStyle: LibraryStyle = LibraryStyle.Folder;
+}
+
+export enum LibraryStyle {
+    Folder,
+    Metadata,
+}
+
 export const PossibleTags = [
     "AlbumTitle",
     "SetSubtitle",

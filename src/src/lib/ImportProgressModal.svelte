@@ -88,16 +88,14 @@
             <progress value={filesCompleted + filesFailed} max={filesToScan}>
               {((filesCompleted + filesFailed) / filesToScan) * 100}%
             </progress>
-            <span>{filesCompleted}+{filesFailed}</span><span
-              >/{filesToScan}</span
-            >
+            <span>{filesCompleted}+{filesFailed}</span>
+            <span>/{filesToScan}</span>
           {/if}
         {:else}
           finished scanning, {filesFailed} failed, {filesCompleted} succeeded, {filesToScan}
           total
-          <button on:click={() => (show = false)}>Close modal</button>
         {/if}
-
+        <button on:click={() => (show = false)}>Close modal</button>
         <div>
           <ImportProgressModalFileErrorGroup
             legend="Failed to read file"

@@ -5,7 +5,7 @@
     import MultiSelect from "svelte-multiselect";
 
     import ImportProgressModal from "./ImportProgressModal.svelte";
-    import { PossibleTags } from "../types";
+    import { LibraryStyle, PossibleTags, Settings } from "../types";
 
     const store = new Store("settings.abp");
     let displayModal = false;
@@ -36,6 +36,11 @@
         invoke(cmd);
     };
 
+    let settings = new Settings();
+    invoke<Settings>("load_settings").then((v) => {
+        settings = v;
+    });
+
     let selectedAuthorTags = [];
     let selectedBookTags = [];
 </script>
@@ -55,9 +60,14 @@
     <label for="libraryLocation">Library Location</label>
     <input
         name="libraryLocation"
-        value={libraryPath}
+        bind:value={settings.libraryLocation}
         on:click={librarySelectFolder}
     />
+    <label for="libraryStyle">Library Style</label>
+    <select name="libraryStyle" bind:value={settings.libraryStyle}>
+        <option value={LibraryStyle.Folder}>Folder</option>
+        <option value={LibraryStyle.Metadata}>Metadata</option>
+    </select>
     <fieldset>
         <legend>Metadata Scan Settings</legend>
         <label for="authorTagSelect">Possible Author Tags</label>
