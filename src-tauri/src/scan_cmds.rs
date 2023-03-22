@@ -151,9 +151,18 @@ async fn scan_metadata_with_template(
             continue;
         };
 
-        let Some(tag) = meta.primary_tag() else {
+        let tag = if meta.primary_tag().is_some() {
+            meta.primary_tag().unwrap()
+        } else if meta.first_tag().is_some() {
+            meta.first_tag().unwrap()
+        } else {
             debug!("Failed Read Tag {:?}", entry);
-            window.emit("scan_metadata_file_failed_tag_read", entry.path().to_str().unwrap().to_string()).expect("event emit failed");
+            window
+                .emit(
+                    "scan_metadata_file_failed_tag_read",
+                    entry.path().to_str().unwrap().to_string(),
+                )
+                .expect("event emit failed");
             continue;
         };
 

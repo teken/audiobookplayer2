@@ -66,8 +66,16 @@ pub struct MetadataTemplate {
 impl Default for MetadataTemplate {
     fn default() -> Self {
         Self {
-            author: vec![lofty::ItemKey::TrackArtist, lofty::ItemKey::AlbumArtist],
-            title: vec![lofty::ItemKey::AlbumTitle],
+            author: vec![
+                lofty::ItemKey::TrackArtist,
+                lofty::ItemKey::OriginalArtist,
+                lofty::ItemKey::AlbumArtist,
+            ],
+            title: vec![
+                lofty::ItemKey::AlbumTitle,
+                lofty::ItemKey::OriginalAlbumTitle,
+                lofty::ItemKey::TrackTitle,
+            ],
         }
     }
 }
