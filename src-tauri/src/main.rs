@@ -6,7 +6,8 @@
 use async_once::AsyncOnce;
 use dotenv::dotenv;
 use lazy_static::lazy_static;
-use surrealdb::{Datastore, Session};
+use surrealdb::dbs::Session;
+use surrealdb::kvs::Datastore;
 use tauri::Manager;
 use window_shadows::set_shadow;
 
@@ -35,7 +36,6 @@ async fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_store::PluginBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
             book_cmds::clear_book_time,
             book_cmds::load_book_time,

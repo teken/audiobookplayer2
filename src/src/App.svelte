@@ -11,6 +11,8 @@
   import Library from "./lib/Library.svelte";
   import Settings from "./lib/Settings.svelte";
   import SlimPlayer from "./lib/SlimPlayer.svelte";
+  import { settings } from "./store";
+  import type { Settings as SettingsType } from "./types";
 
   const routes = {
     "/": Library,
@@ -29,6 +31,14 @@
           r.update();
         }, 60 * 60 * 1000);
     },
+  });
+
+  invoke("get_settings").then((v: SettingsType) => {
+    settings.set(v);
+  });
+
+  settings.subscribe((v) => {
+    invoke("set_settings", { newSettings: v });
   });
 </script>
 

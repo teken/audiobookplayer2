@@ -6,28 +6,24 @@ use crate::SES;
 
 #[tauri::command]
 pub async fn clear_library() -> Result<(), ClearDatabaseError> {
-    match DB
-        .get()
+    DB.get()
         .await
         .execute("REMOVE TABLE works", &SES, None, false)
         .await
-    {
-        Ok(_) => Ok(()),
-        Err(_) => Err(ClearDatabaseError),
-    }
+        .map(|_| ())
+        .map_err(|_| ClearDatabaseError)
 }
 
 #[tauri::command]
 pub async fn load_library() -> Result<Vec<Work>, LoadWorksError> {
-    let Ok(result) = DB.get().await
+    let result = DB
+        .get()
+        .await
         .execute("SELECT * FROM works FETCH author", &SES, None, false)
-        .await else {
-            return Err(LoadWorksError);
-        };
+        .await
+        .map_err(|_| LoadWorksError)?;
 
-    let Ok(objects) = into_iter_objects(result) else {
-        return Err(LoadWorksError);
-    };
+    let objects = into_iter_objects(result).map_err(|_| LoadWorksError)?;
 
     Ok(objects
         .into_iter()
@@ -75,13 +71,10 @@ pub async fn library_stats() {
 
 #[tauri::command]
 pub async fn clear_times() -> Result<(), ClearDatabaseError> {
-    match DB
-        .get()
+    DB.get()
         .await
         .execute("REMOVE TABLE times", &SES, None, false)
         .await
-    {
-        Ok(_) => Ok(()),
-        Err(_) => Err(ClearDatabaseError),
-    }
+        .map(|_| ())
+        .map_err(|_| ClearDatabaseError)
 }

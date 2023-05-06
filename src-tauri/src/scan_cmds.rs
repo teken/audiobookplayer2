@@ -3,15 +3,20 @@ use log::{debug, error, info};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Write;
+use tauri::AppHandle;
 use walkdir::WalkDir;
 
+use crate::settings_cmds::load_settings;
 use crate::types::{MetadataTemplate, Work};
-use crate::utils::{
-    create_author, create_work, AUDIO_FILE_EXTENSIONS, IMAGE_FILE_EXTENSIONS, LIBRARY_LOCATION,
-};
+use crate::utils::{create_author, create_work, AUDIO_FILE_EXTENSIONS, IMAGE_FILE_EXTENSIONS};
 
 #[tauri::command]
-pub async fn scan_folder(window: tauri::Window) {
+pub async fn scan_folder(app_handle: AppHandle, window: tauri::Window) {
+    info!("loading settings");
+    let settings = load_settings(app_handle)
+        .await
+        .expect("Failed to load settings");
+
     info!("library scanning");
     let mut library: Vec<Work> = vec![];
 
@@ -19,7 +24,7 @@ pub async fn scan_folder(window: tauri::Window) {
         .emit("scan_finding_files", 0)
         .expect("event emit failed");
 
-    let authors = fs::read_dir(LIBRARY_LOCATION);
+    let authors = fs::read_dir(settings.library_location.clone());
     for author in authors.unwrap() {
         // authors
         let au = author.unwrap();
@@ -114,6 +119,11 @@ async fn scan_metadata_with_template(
     app_handle: tauri::AppHandle,
     window: tauri::Window,
 ) {
+    info!("loading settings");
+    let settings = load_settings(app_handle.clone())
+        .await
+        .expect("Failed to load settings");
+
     info!("library scanning");
     let mut library: HashMap<String, Work> = HashMap::new();
     let mut authors: HashMap<String, String> = HashMap::new();
@@ -122,7 +132,7 @@ async fn scan_metadata_with_template(
         .emit("scan_finding_files", 0)
         .expect("event emit failed");
 
-    let files = WalkDir::new(LIBRARY_LOCATION)
+    let files = WalkDir::new(settings.library_location.clone())
         .max_depth(4)
         .into_iter()
         .filter_map(|e| match e {

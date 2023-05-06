@@ -96,7 +96,7 @@ button:not(.ghost):focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 } */
 
-input {
+input, select {
   background-color: var(--color4);
   border: solid var(--color3);
   outline: 0;

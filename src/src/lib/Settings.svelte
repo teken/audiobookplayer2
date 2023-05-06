@@ -1,19 +1,16 @@
 <script lang="ts">
     import { invoke } from "@tauri-apps/api";
-    import { Store } from "tauri-plugin-store-api";
     import { open } from "@tauri-apps/api/dialog";
     import MultiSelect from "svelte-multiselect";
 
     import ImportProgressModal from "./ImportProgressModal.svelte";
     import { LibraryStyle, PossibleTags, Settings } from "../types";
+    import { settings } from "../store";
 
-    const store = new Store("settings.abp");
     let displayModal = false;
 
-    let libraryPath = "";
-    store.get("libraryPath").then((v: string) => {
-        libraryPath = v ?? "";
-    });
+    let libraryLocation = $settings.libraryLocation;
+    let libraryStyle = $settings.libraryStyle;
 
     const librarySelectFolder = async () => {
         await open({
@@ -21,9 +18,7 @@
             multiple: false,
         }).then((v) => {
             if (!v) return;
-            libraryPath = v as string;
-            store.set("libraryPath", libraryPath);
-            store.save();
+            libraryLocation = v as string;
         });
     };
 
@@ -35,12 +30,6 @@
         displayModal = true;
         invoke(cmd);
     };
-
-    let settings = new Settings();
-    invoke<Settings>("load_settings").then((v) => {
-        settings = v;
-    });
-
     let selectedAuthorTags = [];
     let selectedBookTags = [];
 </script>
@@ -60,15 +49,15 @@
     <label for="libraryLocation">Library Location</label>
     <input
         name="libraryLocation"
-        bind:value={settings.libraryLocation}
+        bind:value={libraryLocation}
         on:click={librarySelectFolder}
     />
     <label for="libraryStyle">Library Style</label>
-    <select name="libraryStyle" bind:value={settings.libraryStyle}>
+    <select name="libraryStyle" bind:value={libraryStyle}>
         <option value={LibraryStyle.Folder}>Folder</option>
         <option value={LibraryStyle.Metadata}>Metadata</option>
     </select>
-    <fieldset>
+    <!-- <fieldset>
         <legend>Metadata Scan Settings</legend>
         <label for="authorTagSelect">Possible Author Tags</label>
         <MultiSelect
@@ -82,7 +71,7 @@
             bind:selectedBookTags
             options={PossibleTags}
         />
-    </fieldset>
+    </fieldset> -->
 </form>
 
 <style>
