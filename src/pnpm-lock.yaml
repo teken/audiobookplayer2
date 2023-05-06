@@ -18,6 +18,7 @@ specifiers:
   typescript: ^4.9.3
   vite: ^3.2.5
   vite-plugin-pwa: ^0.14.4
+  workbox-window: ^6.5.4
 
 dependencies:
   '@fortawesome/free-solid-svg-icons': 6.2.1
@@ -26,7 +27,7 @@ dependencies:
   svelte-fontawesome: 0.0.3
   svelte-portal: 2.2.0
   svelte-spa-router: 3.3.0
-  tauri-plugin-store-api: github.com/tauri-apps/tauri-plugin-store/971c3d86fb614871c49e27a30124454c66ca3a53
+  tauri-plugin-store-api: github.com/tauri-apps/tauri-plugin-store/0558a1f6c869ae0afdb0181dfa1ea31be8cf4893
 
 devDependencies:
   '@sveltejs/vite-plugin-svelte': 1.4.0_svelte@3.54.0+vite@3.2.5
@@ -38,7 +39,8 @@ devDependencies:
   tslib: 2.4.1
   typescript: 4.9.3
   vite: 3.2.5_sass@1.56.1
-  vite-plugin-pwa: 0.14.4_vite@3.2.5
+  vite-plugin-pwa: 0.14.4_v7patrztka3wxwjwwj7rxgk7ey
+  workbox-window: 6.5.4
 
 packages:
 
@@ -3190,10 +3192,11 @@ packages:
       punycode: 2.3.0
     dev: true
 
-  /vite-plugin-pwa/0.14.4_vite@3.2.5:
+  /vite-plugin-pwa/0.14.4_v7patrztka3wxwjwwj7rxgk7ey:
     resolution: {integrity: sha512-M7Ct0so8OlouMkTWgXnl8W1xU95glITSKIe7qswZf1tniAstO2idElGCnsrTJ5NPNSx1XqfTCOUj8j94S6FD7Q==}
     peerDependencies:
       vite: ^3.1.0 || ^4.0.0
+      workbox-window: ^6.5.4
     dependencies:
       '@rollup/plugin-replace': 5.0.2_rollup@3.19.1
       debug: 4.3.4
@@ -3441,8 +3444,8 @@ packages:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
     dev: true
 
-  github.com/tauri-apps/tauri-plugin-store/971c3d86fb614871c49e27a30124454c66ca3a53:
-    resolution: {tarball: https://codeload.github.com/tauri-apps/tauri-plugin-store/tar.gz/971c3d86fb614871c49e27a30124454c66ca3a53}
+  github.com/tauri-apps/tauri-plugin-store/0558a1f6c869ae0afdb0181dfa1ea31be8cf4893:
+    resolution: {tarball: https://codeload.github.com/tauri-apps/tauri-plugin-store/tar.gz/0558a1f6c869ae0afdb0181dfa1ea31be8cf4893}
     name: tauri-plugin-store-api
     version: 0.0.0
     dependencies:
