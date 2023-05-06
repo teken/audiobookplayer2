@@ -32,7 +32,7 @@ lazy_static! {
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    env_logger::init();
+    // env_logger::init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
@@ -58,6 +58,18 @@ async fn main() {
             close_splashscreen,
         ])
         .setup(|app| {
+            let mut log_path = app.path_resolver().app_log_dir().expect("unknown log dir");
+            log_path.push("abp.log");
+
+            if log_path.exists() {
+                std::fs::remove_file(&log_path).expect("failed to remove log file");
+            } else {
+                std::fs::create_dir_all(log_path.parent().unwrap())
+                    .expect("failed to create log dir");
+            }
+            simple_logging::log_to_file(log_path, log::LevelFilter::Warn)
+                .expect("failed to setup file logging");
+
             let main_window = app.get_window("main").unwrap();
             set_shadow(&main_window, true).expect("Unsupported platform!");
 
