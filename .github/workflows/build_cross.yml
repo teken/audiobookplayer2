@@ -24,6 +24,8 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         name: Install pnpm
+        with:
+          run_install: false
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -49,7 +51,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: install frontend dependencies
-        run: pnpm install # change this to npm or pnpm depending on which one you use
+        run: pnpm install
 
       - uses: tauri-apps/tauri-action@v0
         env:
