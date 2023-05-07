@@ -3,9 +3,13 @@
     windows_subsystem = "windows"
 )]
 
-use async_once::AsyncOnce;
 use dotenv::dotenv;
 use lazy_static::lazy_static;
+use log::{error, LevelFilter};
+use log4rs::append::console::ConsoleAppender;
+use log4rs::append::file::FileAppender;
+use log4rs::config::{Appender, Config, Root};
+use once_cell::sync::OnceCell;
 use surrealdb::dbs::Session;
 use surrealdb::kvs::Datastore;
 use tauri::Manager;
@@ -20,14 +24,10 @@ mod types;
 mod utils;
 
 lazy_static! {
-    static ref DB: AsyncOnce<Datastore> = AsyncOnce::new(async {
-        let db_path = std::env::var("SURREAL_PATH").unwrap_or("file://../data.db".to_owned());
-        Datastore::new(db_path.as_str())
-            .await
-            .expect("failed to open db")
-    });
     static ref SES: Session = Session::for_db("abp", "local");
 }
+
+pub static DB: OnceCell<Datastore> = OnceCell::new();
 
 #[tokio::main]
 async fn main() {
@@ -61,14 +61,25 @@ async fn main() {
             let mut log_path = app.path_resolver().app_log_dir().expect("unknown log dir");
             log_path.push("abp.log");
 
-            if log_path.exists() {
-                std::fs::remove_file(&log_path).expect("failed to remove log file");
-            } else {
-                std::fs::create_dir_all(log_path.parent().unwrap())
-                    .expect("failed to create log dir");
-            }
-            simple_logging::log_to_file(log_path, log::LevelFilter::Warn)
-                .expect("failed to setup file logging");
+            let stdout = ConsoleAppender::builder().build();
+
+            let requests = FileAppender::builder()
+                .append(false)
+                .build(log_path.to_str().expect("msg"))
+                .expect("File appender build failed");
+
+            let config = Config::builder()
+                .appender(Appender::builder().build("stdout", Box::new(stdout)))
+                .appender(Appender::builder().build("file", Box::new(requests)))
+                .build(
+                    Root::builder()
+                        .appender("stdout")
+                        .appender("file")
+                        .build(LevelFilter::Warn),
+                )
+                .expect("Failed to build log config");
+
+            log4rs::init_config(config).expect("Failed to setup logging");
 
             let main_window = app.get_window("main").unwrap();
             set_shadow(&main_window, true).expect("Unsupported platform!");
@@ -91,6 +102,23 @@ async fn main() {
                 }
             });
 
+            let mut db_path = app.path_resolver().app_log_dir().expect("unknown log dir");
+            db_path.push("datadb");
+
+            let j = app.app_handle();
+            tauri::async_runtime::spawn(async move {
+                let Ok(store) =
+                    Datastore::new(db_path.to_str().expect("Failed to convert path")).await else {
+                        error!("Failed to create DB");
+                        j.exit(1);
+                        return;
+                    };
+
+                if DB.set(store).is_err() {
+                    error!("Failed to set DB");
+                    j.exit(1);
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

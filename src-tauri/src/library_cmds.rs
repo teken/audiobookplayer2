@@ -7,7 +7,7 @@ use crate::SES;
 #[tauri::command]
 pub async fn clear_library() -> Result<(), ClearDatabaseError> {
     DB.get()
-        .await
+        .expect("DB does not exist")
         .execute("REMOVE TABLE works", &SES, None, false)
         .await
         .map(|_| ())
@@ -18,7 +18,7 @@ pub async fn clear_library() -> Result<(), ClearDatabaseError> {
 pub async fn load_library() -> Result<Vec<Work>, LoadWorksError> {
     let result = DB
         .get()
-        .await
+        .expect("DB does not exist")
         .execute("SELECT * FROM works FETCH author", &SES, None, false)
         .await
         .map_err(|_| LoadWorksError)?;
@@ -40,7 +40,7 @@ pub async fn search(search: String) -> Vec<Work> {
     ); // string::lowercase(author->name) CONTAINS string::lowercase('{search}') \ COALESCE(string::lowercase(series),'') CONTAINS string::lowercase('{search}') \
     let result = DB
         .get()
-        .await
+        .expect("DB does not exist")
         .execute(ass.as_str(), &SES, None, false)
         .await
         .unwrap();
@@ -72,7 +72,7 @@ pub async fn library_stats() {
 #[tauri::command]
 pub async fn clear_times() -> Result<(), ClearDatabaseError> {
     DB.get()
-        .await
+        .expect("DB does not exist")
         .execute("REMOVE TABLE times", &SES, None, false)
         .await
         .map(|_| ())

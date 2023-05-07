@@ -114,7 +114,7 @@ pub async fn create_work(work: Work) -> Result<(), String> {
     ]);
     match DB
         .get()
-        .await
+        .expect("DB does not exist")
         .execute(ass.as_str(), &SES, Some(data), false)
         .await
     {
@@ -133,7 +133,7 @@ pub async fn create_author(author_name: String) -> Result<String, String> {
         BTreeMap::from([("name".into(), author_name.replace('\'', r"\'").into())]);
     match DB
         .get()
-        .await
+        .expect("DB does not exist")
         .execute(ass.as_str(), &SES, Some(data), false)
         .await
     {

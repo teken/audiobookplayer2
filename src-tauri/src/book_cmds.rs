@@ -27,7 +27,7 @@ pub async fn start_book(app_handle: tauri::AppHandle, work_id: String) {
 #[tauri::command]
 pub async fn load_book_time(work_id: String) -> Result<Option<f64>, ReadWorkDataError> {
     let ass = format!("SELECT position FROM times WHERE work={}", work_id);
-    let Ok(result) = DB.get().await
+    let Ok(result) = DB.get().expect("DB does not exist")
         .execute(ass.as_str(), &SES, None, false)
         .await else {
             return Err(ReadWorkDataError {});
@@ -52,7 +52,7 @@ pub async fn load_book_time(work_id: String) -> Result<Option<f64>, ReadWorkData
 #[tauri::command]
 pub async fn load_work(work_id: String) -> Result<Work, LoadWorksError> {
     let ass = format!("SELECT * FROM {work_id} FETCH author");
-    let Ok(result) = DB.get().await.execute(ass.as_str(), &SES, None, false).await else {
+    let Ok(result) = DB.get().expect("DB does not exist").execute(ass.as_str(), &SES, None, false).await else {
         return Err(LoadWorksError);
     };
 
@@ -93,7 +93,7 @@ pub async fn update_work_time(work_id: String, position: f64) -> Result<(), AddW
     );
     match DB
         .get()
-        .await
+        .expect("DB does not exist")
         .execute(ass.as_str(), &SES, None, false)
         .await
     {
@@ -110,7 +110,7 @@ pub async fn clear_book_time(work_id: String) -> Result<(), String> {
     let ass = format!("DELETE times WHERE work={}", work_id);
     match DB
         .get()
-        .await
+        .expect("DB does not exist")
         .execute(ass.as_str(), &SES, None, false)
         .await
     {
