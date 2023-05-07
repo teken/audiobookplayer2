@@ -60,7 +60,7 @@ async fn main() {
 
             let requests = FileAppender::builder()
                 .append(false)
-                .build(log_path.to_str().expect("msg"))
+                .build(log_path.to_str().expect("Failed to convert path"))
                 .expect("File appender build failed");
 
             let config = Config::builder()
@@ -98,7 +98,7 @@ async fn main() {
             });
 
             let mut db_path = app.path_resolver().app_log_dir().expect("unknown log dir");
-            db_path.push("datadb");
+            db_path.push("db");
 
             let j = app.app_handle();
             tauri::async_runtime::spawn(async move {
