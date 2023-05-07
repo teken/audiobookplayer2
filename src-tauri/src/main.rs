@@ -4,7 +4,7 @@
 )]
 
 use dotenv::dotenv;
-use log::{error, LevelFilter};
+use log::{error, info, LevelFilter};
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
@@ -70,7 +70,7 @@ async fn main() {
                     Root::builder()
                         .appender("stdout")
                         .appender("file")
-                        .build(LevelFilter::Warn),
+                        .build(LevelFilter::Info),
                 )
                 .expect("Failed to build log config");
 
@@ -97,20 +97,30 @@ async fn main() {
                 }
             });
 
-            let mut db_path = app.path_resolver().app_log_dir().expect("unknown log dir");
+            let mut db_path = app
+                .path_resolver()
+                .app_data_dir()
+                .expect("unknown data dir");
             db_path.push("db");
 
             let j = app.app_handle();
             tauri::async_runtime::spawn(async move {
-                let Ok(store) =
-                    Datastore::new(db_path.to_str().expect("Failed to convert path")).await else {
-                        error!("Failed to create DB");
-                        j.exit(1);
-                        return;
-                    };
+                let store = Datastore::new(
+                    format!(
+                        "file://{}",
+                        db_path.to_str().expect("Failed to convert path")
+                    )
+                    .as_str(),
+                )
+                .await;
+                if let Err(err) = store {
+                    error!("Failed to create DB: {}", err);
+                    j.exit(1);
+                    return;
+                }
 
-                if DB.set(store).is_err() {
-                    error!("Failed to set DB");
+                if let Err(err) = DB.set(store.unwrap()) {
+                    error!("Failed to set DB: {}", err);
                     j.exit(1);
                 }
             });
