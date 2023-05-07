@@ -4,12 +4,11 @@
 )]
 
 use dotenv::dotenv;
-use lazy_static::lazy_static;
 use log::{error, LevelFilter};
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use surrealdb::dbs::Session;
 use surrealdb::kvs::Datastore;
 use tauri::Manager;
@@ -23,16 +22,12 @@ mod settings_cmds;
 mod types;
 mod utils;
 
-lazy_static! {
-    static ref SES: Session = Session::for_db("abp", "local");
-}
-
 pub static DB: OnceCell<Datastore> = OnceCell::new();
+pub static SES: Lazy<Session> = Lazy::new(|| Session::for_db("abp", "local"));
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    // env_logger::init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
