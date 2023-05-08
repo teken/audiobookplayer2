@@ -45,15 +45,16 @@ pub struct LoadWorksError;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReadFileMetadataError {}
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Settings {
     pub library_location: String,
     pub library_style: LibraryStyle,
     // pub metadata_template: MetadataTemplate,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub enum LibraryStyle {
+    #[default]
     Folder,
     Metadata,
 }

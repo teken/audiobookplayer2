@@ -3,14 +3,16 @@
     windows_subsystem = "windows"
 )]
 
+use std::str::FromStr;
+
 use dotenv::dotenv;
-use log::{error, info, LevelFilter};
+use log::{error, LevelFilter};
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use once_cell::sync::{Lazy, OnceCell};
-use surrealdb::dbs::Session;
-use surrealdb::kvs::Datastore;
+use surrealdb::Datastore;
+use surrealdb::Session;
 use tauri::Manager;
 use window_shadows::set_shadow;
 
@@ -58,19 +60,21 @@ async fn main() {
 
             let stdout = ConsoleAppender::builder().build();
 
-            let requests = FileAppender::builder()
+            let file = FileAppender::builder()
                 .append(false)
                 .build(log_path.to_str().expect("Failed to convert path"))
                 .expect("File appender build failed");
 
             let config = Config::builder()
                 .appender(Appender::builder().build("stdout", Box::new(stdout)))
-                .appender(Appender::builder().build("file", Box::new(requests)))
+                .appender(Appender::builder().build("file", Box::new(file)))
                 .build(
-                    Root::builder()
-                        .appender("stdout")
-                        .appender("file")
-                        .build(LevelFilter::Info),
+                    Root::builder().appender("stdout").appender("file").build(
+                        LevelFilter::from_str(
+                            &std::env::var("RUST_LOG").unwrap_or("WARN".to_string()),
+                        )
+                        .unwrap(),
+                    ),
                 )
                 .expect("Failed to build log config");
 
@@ -119,8 +123,8 @@ async fn main() {
                     return;
                 }
 
-                if let Err(err) = DB.set(store.unwrap()) {
-                    error!("Failed to set DB: {}", err);
+                if let Err(_) = DB.set(store.unwrap()) {
+                    error!("Failed to set DB");
                     j.exit(1);
                 }
             });
@@ -132,11 +136,9 @@ async fn main() {
 
 #[tauri::command]
 async fn close_splashscreen(window: tauri::Window) {
-    window
-        .get_window("splashscreen")
-        .expect("splashscreen not found")
-        .close()
-        .expect("splashscreen not closed");
+    if let Some(win) = window.get_window("splashscreen") {
+        win.close().expect("splashscreen not closed");
+    }
     window
         .get_window("main")
         .expect("main not found")

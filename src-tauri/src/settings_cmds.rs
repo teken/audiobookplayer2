@@ -12,6 +12,11 @@ pub async fn load_settings(app_handle: tauri::AppHandle) -> Result<Settings, Str
         .app_config_dir()
         .expect("cannot find app config path");
     path.push(SETTINGS_FILE);
+    if !path.exists() {
+        return Ok(Settings {
+            ..Default::default()
+        });
+    }
     let Ok(file) = File::open(path.clone()) else {
         return Err(format!("Could not open {:?} file", path));
     };
@@ -31,6 +36,7 @@ pub async fn save_settings(
         .app_config_dir()
         .expect("cannot find app config path");
     path.push(SETTINGS_FILE);
+    println!("{:?}", new_settings);
     let Ok(mut file) = File::create(path.clone()) else {
         return Err(format!("Could not creat {:?} file", path));
     };

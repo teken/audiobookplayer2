@@ -9,8 +9,13 @@
 
     let displayModal = false;
 
-    let libraryLocation = $settings.libraryLocation;
-    let libraryStyle = $settings.libraryStyle;
+    let libraryLocation: string;
+    let libraryStyle: LibraryStyle;
+
+    settings.subscribe((s) => {
+        libraryLocation = s.library_location;
+        libraryStyle = s.library_style;
+    });
 
     const librarySelectFolder = async () => {
         await open({
@@ -18,7 +23,16 @@
             multiple: false,
         }).then((v) => {
             if (!v) return;
-            libraryLocation = v as string;
+            settings.update((x) => {
+                x.library_location = v as string;
+                return x;
+            });
+        });
+    };
+    const updateLibraryStyle = async () => {
+        settings.update((x) => {
+            x.library_style = libraryStyle;
+            return x;
         });
     };
 
@@ -53,7 +67,11 @@
         on:click={librarySelectFolder}
     />
     <label for="libraryStyle">Library Style</label>
-    <select name="libraryStyle" bind:value={libraryStyle}>
+    <select
+        name="libraryStyle"
+        bind:value={libraryStyle}
+        on:change={updateLibraryStyle}
+    >
         <option value={LibraryStyle.Folder}>Folder</option>
         <option value={LibraryStyle.Metadata}>Metadata</option>
     </select>

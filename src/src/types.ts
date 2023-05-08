@@ -38,13 +38,13 @@ export class Segment {
 }
 
 export class Settings {
-    libraryLocation: string = "";
-    libraryStyle: LibraryStyle = LibraryStyle.Folder;
+    library_location: string = "";
+    library_style: LibraryStyle = LibraryStyle.Folder;
 }
 
 export enum LibraryStyle {
-    Folder,
-    Metadata,
+    Folder = "Folder",
+    Metadata = "Metadata",
 }
 
 export const PossibleTags = [

@@ -6,9 +6,9 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::time::Duration;
-use surrealdb::dbs::Response;
 use surrealdb::sql::Object;
 use surrealdb::sql::Value;
+use surrealdb::Response;
 
 use crate::DB;
 use crate::SES;

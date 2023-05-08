@@ -33,12 +33,15 @@
     },
   });
 
-  invoke("get_settings").then((v: SettingsType) => {
+  invoke("load_settings").then((v: SettingsType) => {
+    console.log("loaded settings", v);
     settings.set(v);
   });
 
   settings.subscribe((v) => {
-    invoke("set_settings", { newSettings: v });
+    if (!v) return;
+    console.log("saving settings", v);
+    invoke("save_settings", { new_settings: v });
   });
 </script>
 
