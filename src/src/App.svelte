@@ -33,15 +33,17 @@
     },
   });
 
-  invoke("load_settings").then((v: SettingsType) => {
-    console.log("loaded settings", v);
-    settings.set(v);
-  });
+  invoke("load_settings")
+    .then((v: SettingsType) => {
+      settings.set(v);
+    })
+    .catch((e) => console.error("Failed to load settings", e));
 
   settings.subscribe((v) => {
     if (!v) return;
-    console.log("saving settings", v);
-    invoke("save_settings", { new_settings: v });
+    invoke("save_settings", { newSettings: v }).catch((e) =>
+      console.error("Failed to save settings", e)
+    );
   });
 </script>
 
