@@ -34,14 +34,16 @@
   });
 
   invoke("load_settings").then((v: SettingsType) => {
-    console.log("loaded settings", v);
     settings.set(v);
   });
 
   settings.subscribe((v) => {
     if (!v) return;
-    console.log("saving settings", v);
-    invoke("save_settings", { new_settings: v });
+    try {
+      invoke("save_settings", { new_settings: v });
+    } catch (e) {
+      console.error(e);
+    }
   });
 </script>
 
